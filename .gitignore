@@ -44,6 +44,7 @@ go.work.sum
 
 # Local-only design docs (brainstorming specs/plans) — keep local, not on GitHub
 docs/superpowers/
+docs/design/
 
 # local agent state dirs
 .remember/

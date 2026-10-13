@@ -3,7 +3,6 @@
 turnwright v2: a coding-agent CLI in the mold of codex / claude-code. **All agent
 capability comes from agentscope-go** (UnifiedAgent, permissions, compression,
 skills, MCP, sessions) — turnwright is a pure assembly layer plus a TypeScript TUI.
-Design doc: `docs/design/v2-redesign.md`.
 
 ## Layout
 
@@ -46,13 +45,6 @@ Design doc: `docs/design/v2-redesign.md`.
   (Node < 26.1 lacks `node:ffi`; OpenTUI uses bun:ffi). Dev runner: `bun
   tui/packages/tui/src/index.tsx`; engine auto-resolved from repo root.
 - Print mode: `./turnwright-engine -p "..." --output stream-json`.
-
-## Git workflow constraint
-
-This machine cannot reach GitHub. Commits/pushes happen on
-`ssh root@***.***.***.***` (`/root/turnwright`, identity AlanFokCo /
-alanfok2868@gmail.com): rsync the working tree (including `.git`) there, then
-commit/push from the remote.
 
 ## Conventions
 

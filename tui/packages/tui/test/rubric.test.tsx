@@ -1,5 +1,4 @@
-/** Quality rubric measurements (docs/design/v2-redesign.md §6.3).
- *  Numbers get recorded in docs/design/quality-rubric.md each M4 run. */
+/** Quality rubric measurements — targets from the v2 M4 quality sprint. */
 
 import { describe, expect, test } from "bun:test";
 import React from "react";

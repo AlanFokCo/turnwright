@@ -25,8 +25,7 @@ Pre-release (alpha). v2 rebuild:
 - **M0–M2** monorepo, LCP protocol, engine on agentscope-go `main`, TUI skeleton
 - **M3** feature parity: slash commands, `@file` expansion, `/model`,
   session picker, themes, diff view, vim mode, approvals
-- **M4** quality sprint — rubric 43/50 (see
-  [`docs/design/quality-rubric.md`](docs/design/quality-rubric.md)):
+- **M4** quality sprint — rubric 43/50:
   16ms stream batching, interleaved text/tool rendering, resize-safe layout,
   NO_COLOR + 16-color fallbacks, splash-first startup
 - **M5** npm distribution (per-platform engine binaries), CI
@@ -99,11 +98,8 @@ pnpm --filter @turnwright/tui test:ui   # TUI interaction tests (bun)
 pnpm typecheck
 ```
 
-Release builds run on the release node (Linux x86_64):
+Release builds:
 
 ```sh
 bash scripts/build-dist.sh           # TUI bundle + engines for darwin/linux × amd64/arm64
 ```
-
-Design rationale and the milestone plan live in
-[`docs/design/v2-redesign.md`](docs/design/v2-redesign.md).
