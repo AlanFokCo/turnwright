@@ -22,7 +22,7 @@ export function WelcomeHero({ brand, theme }: { brand: Brand; theme: Theme }) {
   );
 }
 
-export function MessageView({ entry, theme }: { entry: Entry; theme: Theme }) {
+export const MessageView = React.memo(function MessageView({ entry, theme }: { entry: Entry; theme: Theme }) {
   if (entry.kind === "user") {
     return (
       <box marginTop={1} paddingX={1}>
@@ -43,7 +43,7 @@ export function MessageView({ entry, theme }: { entry: Entry; theme: Theme }) {
     );
   }
   return <ReplyView reply={entry} theme={theme} />;
-}
+});
 
 function Markdown({ text, theme }: { text: string; theme: Theme }) {
   const renderer = useRenderer();
@@ -63,14 +63,23 @@ function ReplyView({ reply, theme }: { reply: ReplyEntry; theme: Theme }) {
           {reply.thinkingCollapsed ? "" : `: ${reply.thinking.slice(0, 200)}`}
         </text>
       )}
-      {reply.text !== "" && (
+      {reply.segments.map((seg, i) => {
+        if (seg.kind === "text") {
+          if (seg.text.trim() === "") return null;
+          return (
+            <box key={`t${i}`} marginTop={i === 0 && reply.thinking === "" ? 0 : 1}>
+              <Markdown text={seg.text} theme={theme} />
+            </box>
+          );
+        }
+        const tool = reply.tools.find((t) => t.id === seg.toolId);
+        return tool ? <ToolCard key={seg.toolId} tool={tool} theme={theme} /> : null;
+      })}
+      {reply.segments.length === 0 && reply.text !== "" && (
         <box marginTop={reply.thinking !== "" ? 1 : 0}>
           <Markdown text={reply.text} theme={theme} />
         </box>
       )}
-      {reply.tools.map((t) => (
-        <ToolCard key={t.id} tool={t} theme={theme} />
-      ))}
       {reply.error && <text fg={theme.colors.danger}>{theme.icons.error} {reply.error}</text>}
     </box>
   );
@@ -147,25 +156,60 @@ export function ApprovalDialog({
 }
 
 export function StatusLine({
-  theme, brand, model, busy, inTok, outTok, sessionId, branch, permission, vimMode,
+  theme, brand, model, busy, busySecs, inTok, outTok, tokPerSec, sessionId, branch, permission, vimMode, spinner, width,
 }: {
   theme: Theme; brand: Brand; model: string; busy: boolean;
-  inTok: number; outTok: number; sessionId: string; branch: string; permission: string;
+  busySecs: number; inTok: number; outTok: number; tokPerSec: number | null;
+  sessionId: string; branch: string; permission: string;
   vimMode?: "insert" | "normal" | null;
+  spinner: string;
+  width: number;
 }) {
+  const c = theme.colors;
+  const slot = (s: string): React.ReactNode => {
+    switch (s) {
+      case "busy":
+        return (
+          <text fg={busy ? c.accent : c.muted}>
+            {busy ? `${spinner} working ${busySecs}s` : "ready"}
+          </text>
+        );
+      case "model": return <text fg={c.muted}>{model}</text>;
+      case "branch": return branch ? <text fg={c.muted}>⎇ {branch}</text> : null;
+      case "permission": return <text fg={c.muted}>{permission}</text>;
+      case "tokens": return <text fg={c.muted}>↑{inTok} ↓{outTok}</text>;
+      case "toks":
+        return tokPerSec !== null ? <text fg={c.muted}>{tokPerSec} tok/s</text> : null;
+      case "session": return <text fg={c.muted}>{sessionId.slice(0, 8)}</text>;
+      default: return null;
+    }
+  };
+  const order = brand.status?.length
+    ? brand.status
+    : ["busy", "model", "branch", "permission", "tokens", "toks", "session"];
+  // narrow terminals drop low-priority slots instead of wrapping mid-token
+  const minWidth: Record<string, number> = {
+    busy: 0, model: 0, permission: 58, branch: 68, tokens: 76, toks: 84, session: 92,
+  };
+  const visible = order.filter((s) => width >= (minWidth[s] ?? 72));
   return (
-    <box backgroundColor={theme.colors.surface} paddingX={1} flexDirection="row" flexShrink={0}>
-      <text fg={theme.colors.accent}><strong>{brand.name}</strong></text>
+    <box backgroundColor={c.surface} paddingX={1} flexDirection="row" flexShrink={0}>
+      <text fg={c.accent}><strong>{brand.name}</strong></text>
       {vimMode && (
-        <text fg={vimMode === "normal" ? theme.colors.warn : theme.colors.muted}>
+        <text fg={vimMode === "normal" ? c.warn : c.muted}>
           {vimMode === "normal" ? "  NORM" : "  INS"}
         </text>
       )}
-      <text fg={theme.colors.muted}>  {model}{branch ? `  ⎇ ${branch}` : ""}  │  </text>
-      <text fg={busy ? theme.colors.accent : theme.colors.muted}>
-        {busy ? `${theme.icons.running} working` : "ready"}
-      </text>
-      <text fg={theme.colors.muted}>  │  {permission}  │  ↑{inTok} ↓{outTok}  │  {sessionId.slice(0, 8)}</text>
+      {visible.map((s, i) => {
+        const node = slot(s);
+        if (node === null) return null;
+        return (
+          <box key={s} flexDirection="row">
+            <text fg={c.border}>{i === 0 ? "   " : "  │  "}</text>
+            {node}
+          </box>
+        );
+      })}
     </box>
   );
 }

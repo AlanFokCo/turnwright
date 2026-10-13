@@ -34,6 +34,9 @@ type Brand struct {
 	Accent  string   `toml:"accent" json:"accent"` // hex color, e.g. "#F59E0B"
 	Logo    []string `toml:"logo" json:"logo"`   // ASCII art, one string per line
 	Theme   string   `toml:"theme" json:"theme"` // default theme name
+	// Status orders the status-line slots; empty = default layout.
+	// Known slots: busy, model, branch, permission, tokens, toks, session.
+	Status []string `toml:"status" json:"status,omitempty"`
 }
 
 // DefaultBrand is lathe's own visual identity.

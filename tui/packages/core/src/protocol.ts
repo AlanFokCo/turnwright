@@ -8,6 +8,8 @@ export interface Brand {
   accent: string;
   logo: string[];
   theme: string;
+  /** status-line slot order; empty/absent = default layout */
+  status?: string[];
 }
 
 export interface InitializeResult {

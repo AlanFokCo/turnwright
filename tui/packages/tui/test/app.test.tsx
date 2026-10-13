@@ -61,6 +61,9 @@ let client: FakeClient;
 
 async function pump(n = 4) {
   for (let i = 0; i < n; i++) await setup.renderOnce();
+  // let the App's 16ms event-batching window fire, then render its result
+  await new Promise((r) => setTimeout(r, 20));
+  await setup.renderOnce();
 }
 
 async function type(text: string) {
@@ -174,5 +177,34 @@ describe("App", () => {
     await enter();
     await pump(6);
     expect(client.lastInput).toBe("bc");
+  });
+
+  test("ctrl+j inserts a newline, enter submits both lines", async () => {
+    await type("line1");
+    await setup.mockInput.pressKey("j", { ctrl: true });
+    await type("line2");
+    await enter();
+    await pump(6);
+    expect(client.lastInput).toBe("line1\nline2");
+  });
+
+  test("up arrow recalls prompt history", async () => {
+    await type("first");
+    await enter();
+    await pump(6);
+    await type("second");
+    await enter();
+    await pump(6);
+    await setup.mockInput.pressKey("ARROW_UP");
+    await pump();
+    let frame = setup.captureCharFrame();
+    expect(frame).toContain("second");
+    await setup.mockInput.pressKey("ARROW_UP");
+    await pump();
+    frame = setup.captureCharFrame();
+    expect(frame).toContain("first");
+    await enter();
+    await pump(6);
+    expect(client.lastInput).toBe("first");
   });
 });

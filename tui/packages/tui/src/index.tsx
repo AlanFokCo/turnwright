@@ -30,8 +30,9 @@ export function resolveEnginePath(): string {
   return "lathe-engine";
 }
 
-export function parseArgs(argv: string[]): { resume: string | null; engineArgs: string[] } {
+export function parseArgs(argv: string[]): { resume: string | null; engineArgs: string[]; noAnim: boolean } {
   let resume: string | null = null;
+  let noAnim = false;
   const engineArgs: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -39,21 +40,38 @@ export function parseArgs(argv: string[]): { resume: string | null; engineArgs: 
       resume = argv[++i]!;
     } else if (a === "--continue") {
       resume = "continue";
+    } else if (a === "--no-anim") {
+      noAnim = true;
     } else {
       engineArgs.push(a);
     }
   }
-  return { resume, engineArgs };
+  return { resume, engineArgs, noAnim };
 }
 
 async function main() {
-  const { resume, engineArgs } = parseArgs(process.argv.slice(2));
+  const t0 = performance.now();
+  const timing = process.env.LATHE_TIMING ? (mark: string) =>
+    process.stderr.write(`[timing] ${mark}: ${(performance.now() - t0).toFixed(1)}ms\n`) : () => {};
+  const { resume, engineArgs, noAnim } = parseArgs(process.argv.slice(2));
+  // spawn the engine first so its process boot overlaps renderer setup
   const client = new EngineClient({ enginePath: resolveEnginePath(), engineArgs });
-  const info = await client.info;
   const renderer = await createCliRenderer({ exitOnCtrlC: false });
-  createRoot(renderer).render(
-    <App client={client} info={info} resume={resume} />,
+  const root = createRoot(renderer);
+  // paint something immediately; the real app replaces it when the engine answers
+  root.render(
+    <box width="100%" height="100%" padding={1}>
+      <text fg="#6B7280">◆ starting engine…</text>
+    </box>,
   );
+  timing("splash paint");
+  const info = await client.info;
+  timing("engine initialize");
+  root.render(
+    <App client={client} info={info} resume={resume} noAnim={noAnim} />,
+  );
+  await new Promise((r) => setImmediate(r));
+  timing("first render");
 }
 
 main().catch((e) => {

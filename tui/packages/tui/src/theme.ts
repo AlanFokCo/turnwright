@@ -6,13 +6,14 @@ import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Brand } from "@lathe/core";
+import { RGBA } from "@opentui/core";
 
 export interface Theme {
   name: string;
   colors: {
-    bg: string; surface: string; text: string; muted: string;
-    accent: string; success: string; warn: string; danger: string; info: string;
-    border: string; selection: string;
+    bg: string | RGBA; surface: string | RGBA; text: string | RGBA; muted: string | RGBA;
+    accent: string | RGBA; success: string | RGBA; warn: string | RGBA; danger: string | RGBA;
+    info: string | RGBA; border: string | RGBA; selection: string | RGBA;
   };
   icons: Record<string, string>;
   motion: boolean;
@@ -49,6 +50,22 @@ export function builtinTheme(name: string): Theme {
 }
 
 export function loadTheme(name: string, brand: Brand): Theme {
+  // NO_COLOR (https://no-color.org): user asked for no color, honor it
+  // unconditionally — hierarchy rides on weight and icons instead.
+  if (process.env.NO_COLOR !== undefined) {
+    const fg = RGBA.defaultForeground();
+    const bg = RGBA.defaultBackground();
+    const gray = RGBA.fromIndex(8);
+    return {
+      name: "mono",
+      colors: {
+        bg, surface: bg, text: fg, muted: gray, accent: fg,
+        success: fg, warn: fg, danger: fg, info: fg, border: gray, selection: RGBA.fromIndex(240),
+      },
+      icons: UNICODE_ICONS,
+      motion: false,
+    };
+  }
   const base = builtinTheme(name || brand.theme || "lathe-dark");
   const userPath = join(homedir(), ".lathe", "themes", `${base.name}.json`);
   let merged = base;

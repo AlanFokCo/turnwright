@@ -11,7 +11,8 @@ test("tool diff output renders via <diff>", async () => {
   const root = createRoot(setup.renderer);
   const reply: ReplyEntry = {
     kind: "reply", replyId: "r1", text: "", thinking: "", thinkingCollapsed: true,
-    done: true, inTok: 0, outTok: 0,
+    done: true, inTok: 0, outTok: 0, startedAt: 0, endedAt: 1,
+    segments: [{ kind: "tool", toolId: "t1" }],
     tools: [{
       id: "t1", name: "edit", input: '{"path":"a.ts"}',
       output: "--- a/a.ts\n+++ b/a.ts\n@@ -1,2 +1,2 @@\n-old line\n+new line\n ctx",

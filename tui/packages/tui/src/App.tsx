@@ -3,10 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { execSync } from "node:child_process";
 import { basename } from "node:path";
-import { useKeyboard, useRenderer } from "@opentui/react";
+import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import {
   defaultTextareaKeyBindings,
-  type InputKeyBinding, type InputRenderable, type KeyEvent, type ScrollBoxRenderable,
+  type InputKeyBinding, type KeyEvent, type ScrollBoxRenderable, type TextareaRenderable,
 } from "@opentui/core";
 import {
   type AgentEvent, type ApprovalRequest,
@@ -14,7 +14,7 @@ import {
 } from "@lathe/core";
 import { builtinTheme, loadTheme, type Theme } from "./theme.js";
 import {
-  initialChatState, pushNotice, pushUser, reduce, type ChatState,
+  initialChatState, pushNotice, pushUser, reduce, type ChatState, type ReplyEntry,
 } from "./store.js";
 import { ApprovalDialog, MessageView, StatusLine, WelcomeHero } from "./components.js";
 import { ListPicker, type PickerItem } from "./pickers.js";
@@ -43,6 +43,13 @@ const vimNormalBindings: InputKeyBinding[] = [
 // Bare "d" is excluded (no dd chord in the minimal set; D = delete-to-line-end).
 const vimNormalMotions = new Set(["h", "l", "w", "b", "0", "$", "x"]);
 
+// Insert-mode adds shift+enter for newline on terminals that report it;
+// ctrl+j always works via the default linefeed binding.
+const insertBindings: InputKeyBinding[] = [
+  ...defaultTextareaKeyBindings,
+  { name: "return", shift: true, action: "newline" },
+];
+
 function gitBranch(cwd: string): string {
   try {
     return execSync("git branch --show-current", { cwd, stdio: ["ignore", "pipe", "ignore"] })
@@ -52,12 +59,15 @@ function gitBranch(cwd: string): string {
   }
 }
 
-export function App({ client, info, resume }: {
-  client: TuiClient; info: InitializeResult; resume: string | null;
+export function App({ client, info, resume, noAnim }: {
+  client: TuiClient; info: InitializeResult; resume: string | null; noAnim?: boolean;
 }) {
   const brand = info.brand;
   const [themeName, setThemeName] = useState(brand.theme || "lathe-dark");
-  const theme = useMemo(() => loadTheme(themeName, brand), [themeName, brand]);
+  const theme = useMemo(() => {
+    const t = loadTheme(themeName, brand);
+    return noAnim ? { ...t, motion: false } : t;
+  }, [themeName, brand, noAnim]);
   const [chat, setChat] = useState<ChatState>(initialChatState);
   const [sessionId, setSessionId] = useState("");
   const [model, setModel] = useState(info.model);
@@ -71,12 +81,16 @@ export function App({ client, info, resume }: {
   const approvalResolve = useRef<((r: { confirmResults: ConfirmResult[] }) => void) | null>(null);
   const scrollRef = useRef<ScrollBoxRenderable | null>(null);
   const renderer = useRenderer();
+  const { width: termWidth } = useTerminalDimensions();
   // The chat input is uncontrolled: the native buffer is the source of truth.
   // React state only mirrors it for completion candidates, because the
   // reconciler delivers change/enter events with stale closures under fast input.
-  const inputRef = useRef<InputRenderable | null>(null);
+  const inputRef = useRef<TextareaRenderable | null>(null);
+  const cursorLineRef = useRef(0);
+  const historyRef = useRef<string[]>([]);
+  const histIdxRef = useRef<number | null>(null);
   const setInputValue = useCallback((v: string) => {
-    if (inputRef.current) inputRef.current.value = v;
+    if (inputRef.current) inputRef.current.setText(v);
     setInput(v);
   }, []);
 
@@ -94,11 +108,34 @@ export function App({ client, info, resume }: {
   }, [brand, info.cwd]);
 
   useEffect(() => {
+    // Token batching (~60fps): bursts of stream events coalesce into one React
+    // update per 16ms window; sparse events still render immediately.
+    let queue: AgentEvent[] = [];
+    let lastFlush = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const flush = () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (queue.length === 0) return;
+      const batch = queue;
+      queue = [];
+      lastFlush = performance.now();
+      setChat((st) => batch.reduce(reduce, st));
+      if (batch.some((e) => e.type === "reply_end")) setBranch(gitBranch(info.cwd));
+    };
     const onEvent = (ev: AgentEvent) => {
-      setChat((st) => reduce(st, ev));
-      if (ev.type === "reply_end") setBranch(gitBranch(info.cwd));
+      queue.push(ev);
+      const since = performance.now() - lastFlush;
+      if (since >= 16) flush();
+      else if (!timer) timer = setTimeout(flush, 16 - since);
     };
     client.on("event", onEvent);
+    client.on("exit", (code: number) => {
+      setChat((st) => pushNotice(
+        st,
+        `engine exited (code ${code}) — restart ${brand.name} to continue; session state is checkpointed`,
+        "error",
+      ));
+    });
     client.onApproval(
       (req) =>
         new Promise((resolve) => {
@@ -118,9 +155,10 @@ export function App({ client, info, resume }: {
       })
       .catch((e) => setChat((st) => pushNotice(st, `session: ${e.message}`, "error")));
     return () => {
+      if (timer) clearTimeout(timer);
       client.removeAllListeners();
     };
-  }, [client, resume, info.cwd]);
+  }, [client, resume, info.cwd, brand]);
 
   const answerApproval = useCallback(
     (decision: "once" | "deny" | "always") => {
@@ -303,7 +341,7 @@ export function App({ client, info, resume }: {
   const candidates = [...atCandidates.map((c) => "@" + c), ...slashCandidates];
 
   const applyCompletion = useCallback((c: string) => {
-    const cur = inputRef.current?.value ?? input;
+    const cur = inputRef.current?.plainText ?? input;
     const next = c.startsWith("@")
       ? cur.replace(/@[^\s@]*$/, () => c)
       : c + " ";
@@ -312,11 +350,38 @@ export function App({ client, info, resume }: {
 
   const onInputKeyDown = useCallback((key: KeyEvent) => {
     if (key.name === "return" && !key.shift && !key.ctrl && !key.meta) {
-      const v = inputRef.current?.value ?? "";
+      const v = inputRef.current?.plainText ?? "";
       if (!v.trim() || !sessionId || chat.busy) return;
       key.preventDefault();
       setInputValue("");
+      const h = historyRef.current;
+      if (h[h.length - 1] !== v) h.push(v);
+      histIdxRef.current = null;
       submit(v);
+      return;
+    }
+    // prompt history: walk with up/down from the first/last line of the buffer
+    if ((key.name === "up" || key.name === "down") && !(vimEnabled && vimMode === "normal")) {
+      const h = historyRef.current;
+      if (h.length === 0) return;
+      const lines = (inputRef.current?.plainText ?? "").split("\n").length;
+      const navigating = histIdxRef.current !== null;
+      if (key.name === "up" && (navigating || cursorLineRef.current === 0)) {
+        const next = navigating ? Math.max(0, histIdxRef.current! - 1) : h.length - 1;
+        histIdxRef.current = next;
+        key.preventDefault();
+        setInputValue(h[next]!);
+      } else if (key.name === "down" && (navigating || cursorLineRef.current === lines - 1)) {
+        if (navigating && histIdxRef.current! < h.length - 1) {
+          histIdxRef.current! += 1;
+          key.preventDefault();
+          setInputValue(h[histIdxRef.current!]!);
+        } else {
+          histIdxRef.current = null;
+          key.preventDefault();
+          setInputValue("");
+        }
+      }
       return;
     }
     if (!vimEnabled) return;
@@ -372,6 +437,31 @@ export function App({ client, info, resume }: {
     { inTok: 0, outTok: 0 },
   );
 
+  // busy clock + spinner: tick fast while animating, once a second otherwise
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!chat.busy) return;
+    const t = setInterval(() => setTick((n) => n + 1), theme.motion ? 120 : 1000);
+    return () => clearInterval(t);
+  }, [chat.busy, theme.motion]);
+  const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  const spinner: string = theme.motion
+    ? (spinnerFrames[tick % spinnerFrames.length] ?? "•")
+    : (theme.icons.running ?? "●");
+
+  const replies = chat.entries.filter((e) => e.kind === "reply");
+  let activeReply: ReplyEntry | undefined;
+  let lastDone: ReplyEntry | undefined;
+  for (let i = replies.length - 1; i >= 0; i--) {
+    const r = replies[i]!;
+    if (!r.done && !activeReply) activeReply = r;
+    if (r.done && !lastDone) lastDone = r;
+  }
+  const busySecs = activeReply ? Math.floor((Date.now() - activeReply.startedAt) / 1000) : 0;
+  const tokPerSec = lastDone?.endedAt != null && lastDone.endedAt > lastDone.startedAt
+    ? Math.round(lastDone.outTok / ((lastDone.endedAt - lastDone.startedAt) / 1000))
+    : null;
+
   return (
     <box flexDirection="column" width="100%" height="100%" backgroundColor={theme.colors.bg}>
       <scrollbox
@@ -402,23 +492,28 @@ export function App({ client, info, resume }: {
       )}
       <box
         border
-        borderColor={approval ? theme.colors.warn : theme.colors.border}
+        borderColor={approval ? theme.colors.warn : picker ? theme.colors.border : theme.colors.accent}
         marginX={1} paddingX={1} flexShrink={0}
       >
-        <input
-          ref={(r: InputRenderable | null) => { inputRef.current = r; }}
-          onChange={(v: string) => setInput(v)}
+        <textarea
+          ref={(r: TextareaRenderable | null) => { inputRef.current = r; }}
+          onContentChange={() => setInput(inputRef.current?.plainText ?? "")}
+          onCursorChange={(e: { line: number }) => { cursorLineRef.current = e.line; }}
           onKeyDown={onInputKeyDown}
-          keyBindings={vimEnabled && vimMode === "normal" ? vimNormalBindings : defaultTextareaKeyBindings}
+          keyBindings={vimEnabled && vimMode === "normal" ? vimNormalBindings : insertBindings}
           placeholder={approval ? "answer the approval above (y/n/a)" : `ask ${brand.name}…  (/help)`}
           focused={!approval && !picker}
+          minHeight={1}
+          maxHeight={8}
         />
       </box>
       <StatusLine
         theme={theme} brand={brand} model={model} busy={chat.busy}
-        inTok={totals.inTok} outTok={totals.outTok} sessionId={sessionId}
+        busySecs={busySecs} inTok={totals.inTok} outTok={totals.outTok} tokPerSec={tokPerSec}
+        sessionId={sessionId} spinner={spinner}
         branch={branch} permission={permission}
         vimMode={vimEnabled ? vimMode : null}
+        width={termWidth}
       />
     </box>
   );
