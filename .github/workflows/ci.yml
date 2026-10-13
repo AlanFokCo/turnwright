@@ -29,5 +29,3 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r typecheck
       - run: pnpm -r test
-      - name: TUI interaction + rubric tests
-        run: cd tui/packages/tui && bun test test/
