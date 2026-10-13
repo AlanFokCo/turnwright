@@ -1,9 +1,9 @@
 {
-  "name": "@lathe/cli",
+  "name": "@turnwright/cli",
   "version": "2.0.0-alpha.1",
-  "description": "lathe — a common coding agent (agentscope-go engine + OpenTUI client)",
+  "description": "turnwright — a common coding agent (agentscope-go engine + OpenTUI client)",
   "type": "module",
-  "bin": { "lathe": "./bin/lathe.js" },
+  "bin": { "turnwright": "./bin/turnwright.js" },
   "files": ["bin", "dist"],
   "publishConfig": { "access": "public" },
   "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run" },
@@ -13,10 +13,10 @@
     "react": "^19.0.0"
   },
   "optionalDependencies": {
-    "@lathe/engine-darwin-amd64": "2.0.0-alpha.1",
-    "@lathe/engine-darwin-arm64": "2.0.0-alpha.1",
-    "@lathe/engine-linux-amd64": "2.0.0-alpha.1",
-    "@lathe/engine-linux-arm64": "2.0.0-alpha.1"
+    "@turnwright/engine-darwin-amd64": "2.0.0-alpha.1",
+    "@turnwright/engine-darwin-arm64": "2.0.0-alpha.1",
+    "@turnwright/engine-linux-amd64": "2.0.0-alpha.1",
+    "@turnwright/engine-linux-arm64": "2.0.0-alpha.1"
   },
   "devDependencies": { "typescript": "^5.9.0", "@types/node": "^22.0.0", "vitest": "^3.0.0" },
   "engines": { "bun": ">=1.4" }

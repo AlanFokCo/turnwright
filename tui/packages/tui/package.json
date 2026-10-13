@@ -1,5 +1,5 @@
 {
-  "name": "@lathe/tui",
+  "name": "@turnwright/tui",
   "version": "2.0.0-alpha.1",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "test:ui": "bun test"
   },
   "dependencies": {
-    "@lathe/core": "workspace:*",
+    "@turnwright/core": "workspace:*",
     "@opentui/core": "^0.6.1",
     "@opentui/react": "^0.6.1",
     "react": "^19.0.0"

@@ -11,7 +11,7 @@ import (
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/agenttest"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/model"
 
-	"github.com/alanfokco/lathe/internal/config"
+	"github.com/alanfokco/turnwright/internal/config"
 )
 
 // testClient drives an LCP server over in-memory pipes.
@@ -121,7 +121,7 @@ func TestInitialize(t *testing.T) {
 		t.Fatalf("protocolVersion = %v", res["protocolVersion"])
 	}
 	brand := res["brand"].(map[string]any)
-	if brand["name"] != "lathe" || len(brand["logo"].([]any)) == 0 {
+	if brand["name"] != "turnwright" || len(brand["logo"].([]any)) == 0 {
 		t.Fatalf("brand = %v", brand)
 	}
 }

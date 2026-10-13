@@ -1,4 +1,4 @@
-// Package printmode is the non-interactive path: `lathe-engine -p "..."`.
+// Package printmode is the non-interactive path: `turnwright-engine -p "..."`.
 // It drains the agentscope event stream once, rendering text to stdout or
 // raw events as NDJSON (--output stream-json). Permission asks are denied
 // outright (non-interactive cannot answer) — use --permission to relax.
@@ -13,10 +13,10 @@ import (
 
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/event"
 
-	"github.com/alanfokco/lathe/internal/assemble"
-	"github.com/alanfokco/lathe/internal/config"
-	"github.com/alanfokco/lathe/internal/eventjson"
-	"github.com/alanfokco/lathe/internal/transcript"
+	"github.com/alanfokco/turnwright/internal/assemble"
+	"github.com/alanfokco/turnwright/internal/config"
+	"github.com/alanfokco/turnwright/internal/eventjson"
+	"github.com/alanfokco/turnwright/internal/transcript"
 )
 
 // Run executes one prompt and streams the result. Returns a process exit code.
@@ -30,14 +30,14 @@ func Run(ctx context.Context, cfg *config.Config, cwd string) int {
 	}
 	h, err := assemble.Agent(ctx, cfg, cwd, sessionID)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "lathe:", err)
+		fmt.Fprintln(os.Stderr, "turnwright:", err)
 		return 1
 	}
 	defer h.Close()
 
 	ch, err := h.Agent.ReplyStream(ctx, cfg.Prompt)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "lathe:", err)
+		fmt.Fprintln(os.Stderr, "turnwright:", err)
 		return 1
 	}
 
@@ -64,12 +64,12 @@ func Run(ctx context.Context, cfg *config.Config, cwd string) int {
 			denyAll(h, ev)
 			if !streamJSON {
 				for _, tc := range ev.ToolCalls {
-					fmt.Fprintf(os.Stderr, "lathe: denied (non-interactive): %s\n", tc.Name)
+					fmt.Fprintf(os.Stderr, "turnwright: denied (non-interactive): %s\n", tc.Name)
 				}
 			}
 		case event.ReplyEndEvent:
 			if ev.Error != nil {
-				fmt.Fprintln(os.Stderr, "lathe:", ev.Error.Message)
+				fmt.Fprintln(os.Stderr, "turnwright:", ev.Error.Message)
 				exit = 1
 			}
 			if !streamJSON {

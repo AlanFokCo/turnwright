@@ -1,6 +1,6 @@
 // Package transcript persists agentscope agent state to disk. It implements
 // agent.StateSaver with claude-code-style per-project directories:
-// ~/.lathe/projects/<enc-cwd>/<session-id>.json
+// ~/.turnwright/projects/<enc-cwd>/<session-id>.json
 package transcript
 
 import (
@@ -20,7 +20,7 @@ import (
 
 // Saver is a file-backed agent.StateSaver.
 type Saver struct {
-	dir string // ~/.lathe/projects/<enc-cwd>
+	dir string // ~/.turnwright/projects/<enc-cwd>
 }
 
 // NewSaver returns a Saver rooted at the per-project directory for cwd.
@@ -29,7 +29,7 @@ func NewSaver(cwd string) (*Saver, error) {
 	if err != nil || home == "" {
 		return nil, fmt.Errorf("transcript: cannot resolve home dir")
 	}
-	return &Saver{dir: filepath.Join(home, ".lathe", "projects", EncodeCwd(cwd))}, nil
+	return &Saver{dir: filepath.Join(home, ".turnwright", "projects", EncodeCwd(cwd))}, nil
 }
 
 // EncodeCwd maps a working directory to its project-dir slug
@@ -112,7 +112,7 @@ func (s *Saver) ListSessions(_ context.Context) ([]agent.SessionInfo, error) {
 		if data, err := os.ReadFile(filepath.Join(s.dir, name)); err == nil {
 			var state agent.AgentState
 			if json.Unmarshal(data, &state) == nil {
-				it.info.AgentName = "lathe"
+				it.info.AgentName = "turnwright"
 				it.info.Summary = firstUserText(state.Context)
 			}
 		}

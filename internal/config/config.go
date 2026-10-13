@@ -1,8 +1,8 @@
-// Package config resolves lathe's runtime configuration: provider, model,
+// Package config resolves turnwright's runtime configuration: provider, model,
 // API key, permission mode, output format. Resolution order:
-// flag > env > TOML (~/.lathe/config.toml) > defaults.
+// flag > env > TOML (~/.turnwright/config.toml) > defaults.
 //
-// lathe v2: this package is pure assembly glue — all agent capability
+// turnwright v2: this package is pure assembly glue — all agent capability
 // (turn loop, permissions, compression, sessions) lives in agentscope-go.
 package config
 
@@ -15,7 +15,7 @@ import (
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/credential"
 )
 
-// Version is the lathe version surfaced in --version and LCP initialize.
+// Version is the turnwright version surfaced in --version and LCP initialize.
 // Release builds override it via -ldflags "-X .../config.Version=x.y.z".
 var Version = "2.0.0-dev"
 
@@ -28,7 +28,7 @@ const (
 )
 
 // Brand is the product identity surfaced by the TUI (welcome hero, status
-// line, terminal title). Forks rebrand lathe by editing config only.
+// line, terminal title). Forks rebrand turnwright by editing config only.
 type Brand struct {
 	Name    string   `toml:"name" json:"name"`
 	Tagline string   `toml:"tagline" json:"tagline"`
@@ -40,18 +40,18 @@ type Brand struct {
 	Status []string `toml:"status" json:"status,omitempty"`
 }
 
-// DefaultBrand is lathe's own visual identity.
+// DefaultBrand is turnwright's own visual identity.
 func DefaultBrand() Brand {
 	return Brand{
-		Name:    "lathe",
-		Tagline: "the coding lathe — shape your code",
+		Name:    "turnwright",
+	Tagline: "shape your code at the lathe",
 		Accent:  "#F59E0B",
 		Logo: []string{
-			"┬   ┌─┐ ┌┬┐ ┬ ┬ ┌─┐",
-			"│   ├─┤  │  ├─┤ ├┤ ",
-			"┴─┘ ┴ ┴  ┴  ┴ ┴ └─┘",
+		"┌┬┐ ┬ ┬",
+		" │  │││",
+		" ┴  └┴┘",
 		},
-		Theme: "lathe-dark",
+		Theme: "turnwright-dark",
 	}
 }
 
@@ -128,11 +128,11 @@ func Load(f Flags) (*Config, error) {
 	}
 	cfg.Thinking = f.Thinking
 	cfg.ThinkingBudget = f.ThinkingBudget
-	if !cfg.Thinking && envTruthy(os.Getenv("LATHE_THINKING")) {
+	if !cfg.Thinking && envTruthy(os.Getenv("TURNWRIGHT_THINKING")) {
 		cfg.Thinking = true
 	}
 	if cfg.Thinking && cfg.ThinkingBudget == 0 {
-		if e := os.Getenv("LATHE_THINKING_BUDGET"); e != "" {
+		if e := os.Getenv("TURNWRIGHT_THINKING_BUDGET"); e != "" {
 			if n, err := strconv.Atoi(e); err == nil && n > 0 {
 				cfg.ThinkingBudget = n
 			}
@@ -143,14 +143,14 @@ func Load(f Flags) (*Config, error) {
 	}
 	cfg.ReasoningEffort = f.Effort
 	if cfg.ReasoningEffort == "" {
-		cfg.ReasoningEffort = os.Getenv("LATHE_EFFORT")
+		cfg.ReasoningEffort = os.Getenv("TURNWRIGHT_EFFORT")
 	}
 	cfg.Jail = f.Jail
-	if !cfg.Jail && envTruthy(os.Getenv("LATHE_JAIL")) {
+	if !cfg.Jail && envTruthy(os.Getenv("TURNWRIGHT_JAIL")) {
 		cfg.Jail = true
 	}
 	cfg.PromptCaching = f.PromptCaching
-	if !cfg.PromptCaching && envTruthy(os.Getenv("LATHE_PROMPT_CACHING")) {
+	if !cfg.PromptCaching && envTruthy(os.Getenv("TURNWRIGHT_PROMPT_CACHING")) {
 		cfg.PromptCaching = true
 	}
 	cfg.CompactRatio = f.CompactRatio

@@ -1,5 +1,5 @@
-// Package lcp implements the Lathe Core Protocol: JSON-RPC 2.0 over stdio
-// (NDJSON framing). The TypeScript TUI spawns `lathe-engine serve` and drives
+// Package lcp implements the Turnwright Core Protocol: JSON-RPC 2.0 over stdio
+// (NDJSON framing). The TypeScript TUI spawns `turnwright-engine serve` and drives
 // sessions through it. All agent capability is agentscope-go; this package
 // only translates between the protocol and the agentscope event stream.
 package lcp
@@ -18,10 +18,10 @@ import (
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/model"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/permission"
 
-	"github.com/alanfokco/lathe/internal/assemble"
-	"github.com/alanfokco/lathe/internal/config"
-	"github.com/alanfokco/lathe/internal/eventjson"
-	"github.com/alanfokco/lathe/internal/transcript"
+	"github.com/alanfokco/turnwright/internal/assemble"
+	"github.com/alanfokco/turnwright/internal/config"
+	"github.com/alanfokco/turnwright/internal/eventjson"
+	"github.com/alanfokco/turnwright/internal/transcript"
 )
 
 // ProtocolVersion is negotiated in initialize; bump on breaking changes.
@@ -423,7 +423,7 @@ func (s *Server) modelList() any {
 }
 
 // modelSet swaps the model of a live session. UnifiedAgent exposes no
-// SetModel, so lathe re-assembles the agent over the checkpointed state —
+// SetModel, so turnwright re-assembles the agent over the checkpointed state —
 // a pure assembly-layer operation.
 func (s *Server) modelSet(ctx context.Context, sessionID, modelName string) (any, error) {
 	st, ok := s.getSession(sessionID)

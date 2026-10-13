@@ -1,9 +1,9 @@
-/** lathe TUI components. Every visual surface reads from Theme + Brand:
+/** turnwright TUI components. Every visual surface reads from Theme + Brand:
  *  rebranding or restyling never requires touching component code. */
 
 import React, { useMemo } from "react";
 import { useRenderer } from "@opentui/react";
-import type { Brand, ToolCallBlock } from "@lathe/core";
+import type { Brand, ToolCallBlock } from "@turnwright/core";
 import type { Theme } from "./theme.js";
 import type { Entry, ReplyEntry, ToolEntry } from "./store.js";
 import { makeMarkdownStyle } from "./markdown.js";

@@ -1,11 +1,11 @@
 /** Theme system: semantic color slots, icon sets, motion flags.
- *  Resolution: builtin theme <- ~/.lathe/themes/<name>.json <- [brand] accent.
- *  Users restyle lathe without touching code. */
+ *  Resolution: builtin theme <- ~/.turnwright/themes/<name>.json <- [brand] accent.
+ *  Users restyle turnwright without touching code. */
 
 import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Brand } from "@lathe/core";
+import type { Brand } from "@turnwright/core";
 import { RGBA } from "@opentui/core";
 
 export interface Theme {
@@ -26,7 +26,7 @@ const UNICODE_ICONS: Record<string, string> = {
 
 export function builtinTheme(name: string): Theme {
   const dark: Theme = {
-    name: "lathe-dark",
+    name: "turnwright-dark",
     colors: {
       bg: "#0E0F13", surface: "#16181F", text: "#E7E9EE", muted: "#6B7280",
       accent: "#F59E0B", success: "#34D399", warn: "#FBBF24", danger: "#F87171",
@@ -35,7 +35,7 @@ export function builtinTheme(name: string): Theme {
     icons: UNICODE_ICONS,
     motion: true,
   };
-  if (name === "lathe-light") {
+  if (name === "turnwright-light") {
     return {
       ...dark,
       name,
@@ -66,8 +66,8 @@ export function loadTheme(name: string, brand: Brand): Theme {
       motion: false,
     };
   }
-  const base = builtinTheme(name || brand.theme || "lathe-dark");
-  const userPath = join(homedir(), ".lathe", "themes", `${base.name}.json`);
+  const base = builtinTheme(name || brand.theme || "turnwright-dark");
+  const userPath = join(homedir(), ".turnwright", "themes", `${base.name}.json`);
   let merged = base;
   if (existsSync(userPath)) {
     try {

@@ -1,6 +1,6 @@
-// Package assemble is lathe's entire job: wiring agentscope-go capabilities
+// Package assemble is turnwright's entire job: wiring agentscope-go capabilities
 // (model, toolkit, permissions, skills, MCP, session state) into a running
-// agent. lathe implements no agent capability of its own.
+// agent. turnwright implements no agent capability of its own.
 package assemble
 
 import (
@@ -26,23 +26,23 @@ import (
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/skill"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/tool"
 
-	"github.com/alanfokco/lathe/internal/config"
-	"github.com/alanfokco/lathe/internal/transcript"
+	"github.com/alanfokco/turnwright/internal/config"
+	"github.com/alanfokco/turnwright/internal/transcript"
 )
 
 func init() {
 	// NOTE: as.Init() is intentionally NOT called — its "initialized:" line
 	// goes through a package-private logger hardwired to os.Stdout, which
-	// would corrupt LCP framing (stdout is the protocol channel). lathe only
+	// would corrupt LCP framing (stdout is the protocol channel). turnwright only
 	// needs the slog plumbing, which logging.Init sets up on its own.
 	level := slog.LevelWarn
-	if v := os.Getenv("LATHE_LOG_LEVEL"); v != "" {
+	if v := os.Getenv("TURNWRIGHT_LOG_LEVEL"); v != "" {
 		_ = level.UnmarshalText([]byte(v))
 	}
 	logging.Init(logging.WithWriter(os.Stderr), logging.WithLevel(level))
 }
 
-// Handle bundles the assembled agent with the resources lathe wired into it.
+// Handle bundles the assembled agent with the resources turnwright wired into it.
 type Handle struct {
 	Agent     *agent.UnifiedAgent
 	SessionID string
@@ -168,16 +168,16 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 		}))
 	}
 
-	h.Agent = agent.NewUnifiedAgent("lathe", SystemPrompt(cwd, pc), cm, opts...)
+	h.Agent = agent.NewUnifiedAgent("turnwright", SystemPrompt(cwd, pc), cm, opts...)
 	h.Saver = saver
 	return h, nil
 }
 
-// SystemPrompt composes lathe's product prompt with project instructions
+// SystemPrompt composes turnwright's product prompt with project instructions
 // (CLAUDE.md / AGENTS.md via agentscope's project config loader).
 func SystemPrompt(cwd string, pc *asconfig.ProjectConfig) string {
 	var b strings.Builder
-	b.WriteString("You are lathe, a coding agent operating in the user's terminal.\n\n")
+	b.WriteString("You are turnwright, a coding agent operating in the user's terminal.\n\n")
 	b.WriteString("# Environment\n")
 	fmt.Fprintf(&b, "- Working directory: %s\n", cwd)
 	fmt.Fprintf(&b, "- Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
@@ -216,15 +216,15 @@ func findGitRoot(cwd string) string {
 	}
 }
 
-// loadSkills discovers SKILL.md skills from ~/.lathe/skills and the project's
-// .lathe/skills (walked cwd → filesystem root), via agentscope's loader.
+// loadSkills discovers SKILL.md skills from ~/.turnwright/skills and the project's
+// .turnwright/skills (walked cwd → filesystem root), via agentscope's loader.
 func loadSkills(cwd string) []skill.Skill {
 	var dirs []string
 	if home, err := os.UserHomeDir(); err == nil {
-		dirs = append(dirs, filepath.Join(home, ".lathe", "skills"))
+		dirs = append(dirs, filepath.Join(home, ".turnwright", "skills"))
 	}
 	for dir := cwd; ; dir = filepath.Dir(dir) {
-		dirs = append(dirs, filepath.Join(dir, ".lathe", "skills"))
+		dirs = append(dirs, filepath.Join(dir, ".turnwright", "skills"))
 		if filepath.Dir(dir) == dir {
 			break
 		}
@@ -256,13 +256,13 @@ type mcpServer struct {
 	URL     string            `json:"url"`
 }
 
-// loadMCP connects every server declared in ~/.lathe/mcp.json and the
+// loadMCP connects every server declared in ~/.turnwright/mcp.json and the
 // project's .mcp.json (project wins on name clash). Failures are logged to
 // stderr and skipped — one bad server must not block the session.
 func loadMCP(ctx context.Context, cwd string) ([]*tool.Toolkit, []func() error) {
 	servers := map[string]mcpServer{}
 	if home, err := os.UserHomeDir(); err == nil {
-		mergeMCPFile(servers, filepath.Join(home, ".lathe", "mcp.json"))
+		mergeMCPFile(servers, filepath.Join(home, ".turnwright", "mcp.json"))
 	}
 	mergeMCPFile(servers, filepath.Join(cwd, ".mcp.json"))
 
@@ -298,7 +298,7 @@ func loadMCP(ctx context.Context, cwd string) ([]*tool.Toolkit, []func() error) 
 			}
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "lathe: mcp server %q skipped: %v\n", name, err)
+			fmt.Fprintf(os.Stderr, "turnwright: mcp server %q skipped: %v\n", name, err)
 			continue
 		}
 		toolkits = append(toolkits, tk)
@@ -310,13 +310,13 @@ func mergeMCPFile(dst map[string]mcpServer, path string) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			fmt.Fprintf(os.Stderr, "lathe: mcp config %s: %v\n", path, err)
+			fmt.Fprintf(os.Stderr, "turnwright: mcp config %s: %v\n", path, err)
 		}
 		return
 	}
 	var cfg mcpConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "lathe: mcp config %s: %v\n", path, err)
+		fmt.Fprintf(os.Stderr, "turnwright: mcp config %s: %v\n", path, err)
 		return
 	}
 	for name, srv := range cfg.Servers {

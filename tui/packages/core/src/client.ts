@@ -1,4 +1,4 @@
-/** EngineClient: spawns `lathe-engine serve` and speaks LCP over stdio. */
+/** EngineClient: spawns `turnwright-engine serve` and speaks LCP over stdio. */
 
 import { spawn, type ChildProcess } from "node:child_process";
 import * as readline from "node:readline";

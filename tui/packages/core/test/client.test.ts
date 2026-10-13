@@ -7,7 +7,7 @@ import { describe, expect, test } from "vitest";
 import { EngineClient } from "../src/client.js";
 
 function makeEngine(body: string): string {
-  const dir = mkdtempSync(join(tmpdir(), "lathe-fake-engine-"));
+  const dir = mkdtempSync(join(tmpdir(), "turnwright-fake-engine-"));
   const path = join(dir, "engine.cjs");
   writeFileSync(path, `#!/usr/bin/env node\n${body}`);
   chmodSync(path, 0o755);
@@ -49,7 +49,7 @@ describe("EngineClient", () => {
   });
 
   test("unstartable engine surfaces engineError", async () => {
-    const c = new EngineClient({ enginePath: "/nonexistent/lathe-engine" });
+    const c = new EngineClient({ enginePath: "/nonexistent/turnwright-engine" });
     c.info.catch(() => {}); // awaited indirectly via engineError
     const err = await new Promise<Error>((resolve) => c.on("engineError", resolve));
     expect(err.message).toContain("cannot start engine");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { initialChatState, pushUser, reduce } from "../src/store.js";
-import type { AgentEvent } from "@lathe/core";
+import type { AgentEvent } from "@turnwright/core";
 
 describe("chat store", () => {
   it("accumulates a streamed reply", () => {

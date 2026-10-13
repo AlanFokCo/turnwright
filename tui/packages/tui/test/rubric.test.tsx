@@ -6,7 +6,7 @@ import React from "react";
 import { EventEmitter } from "node:events";
 import { createTestRenderer, type TestRendererSetup } from "@opentui/core/testing";
 import { createRoot, type Root } from "@opentui/react";
-import type { AgentEvent, InitializeResult } from "@lathe/core";
+import type { AgentEvent, InitializeResult } from "@turnwright/core";
 import { App } from "../src/App.js";
 import { initialChatState, pushNotice, reduce } from "../src/store.js";
 import { MessageView } from "../src/components.js";
@@ -14,7 +14,7 @@ import { builtinTheme } from "../src/theme.js";
 
 const fakeInfo: InitializeResult = {
   protocolVersion: 1, version: "test",
-  brand: { name: "lathe", tagline: "shape your code", accent: "#F59E0B", logo: ["LATHE"], theme: "lathe-dark" },
+  brand: { name: "turnwright", tagline: "shape your code", accent: "#F59E0B", logo: ["TURNWRIGHT"], theme: "turnwright-dark" },
   provider: "fake", model: "fake-model", cwd: process.cwd(), capabilities: {},
 };
 
@@ -50,7 +50,7 @@ describe("rubric", () => {
   test("1. first paint to usable input fast", async () => {
     const { setup, root, ms } = await boot();
     const frame = setup.captureCharFrame();
-    expect(frame).toContain("ask lathe");
+    expect(frame).toContain("ask turnwright");
     console.log(`METRIC first_paint_ms=${ms.toFixed(1)}`);
     expect(ms).toBeLessThan(500); // test-renderer proxy; real target <100ms measured on device
     root.unmount();
@@ -73,9 +73,9 @@ describe("rubric", () => {
   test("3a. 80x24 narrow terminal: all regions intact", async () => {
     const { setup, root } = await boot(80, 24);
     const frame = setup.captureCharFrame();
-    expect(frame).toContain("LATHE");
+    expect(frame).toContain("TURNWRIGHT");
     expect(frame).toContain("ready");
-    expect(frame).toContain("ask lathe");
+    expect(frame).toContain("ask turnwright");
     // every row exactly 80 cells — no overflow, no collapse
     for (const line of frame.split("\n").slice(0, 24)) {
       expect([0, 80]).toContain(line.length);
@@ -87,7 +87,7 @@ describe("rubric", () => {
   test("3b. 60x16 tiny terminal stays usable", async () => {
     const { setup, root } = await boot(60, 16);
     const frame = setup.captureCharFrame();
-    expect(frame).toContain("ask lathe");
+    expect(frame).toContain("ask turnwright");
     expect(frame).toContain("ready");
     root.unmount();
     await setup.dispose();
@@ -102,7 +102,7 @@ describe("rubric", () => {
       inTok: 0, outTok: 0, startedAt: 0, endedAt: 1,
       segments: [{ kind: "text" as const, text: "好的，已修复 `main.go` 的空指针。Done — 测试全绿。" }],
     };
-    root.render(<box flexDirection="column"><MessageView entry={reply} theme={builtinTheme("lathe-dark")} /></box>);
+    root.render(<box flexDirection="column"><MessageView entry={reply} theme={builtinTheme("turnwright-dark")} /></box>);
     for (let i = 0; i < 4; i++) await setup.renderOnce();
     const frame = setup.captureCharFrame();
     expect(frame).toContain("好的，已修复");
@@ -120,7 +120,7 @@ describe("rubric", () => {
     expect(lines.length).toBeLessThanOrEqual(18); // 17 rows + trailing newline
     for (const line of lines) expect(line.length).toBeLessThanOrEqual(55);
     expect(frame).toContain("ready");
-    expect(frame).toContain("ask lathe");
+    expect(frame).toContain("ask turnwright");
     root.unmount();
     await setup.dispose();
   });

@@ -1,4 +1,4 @@
-/** Lathe Core Protocol (LCP) v1 — shared types between engine and TUI. */
+/** Line-delimited Control Protocol (LCP) v1 — shared types between engine and TUI. */
 
 export const PROTOCOL_VERSION = 1;
 

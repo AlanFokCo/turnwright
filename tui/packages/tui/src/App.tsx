@@ -1,4 +1,4 @@
-/** lathe TUI root: wires the LCP client event stream into chat state. */
+/** turnwright TUI root: wires the LCP client event stream into chat state. */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { execSync } from "node:child_process";
@@ -11,7 +11,7 @@ import {
 import {
   type AgentEvent, type ApprovalRequest,
   type ConfirmResult, type InitializeResult, type TuiClient,
-} from "@lathe/core";
+} from "@turnwright/core";
 import { builtinTheme, loadTheme, type Theme } from "./theme.js";
 import {
   initialChatState, pushNotice, pushUser, reduce, type ChatState, type ReplyEntry,
@@ -63,7 +63,7 @@ export function App({ client, info, resume, noAnim }: {
   client: TuiClient; info: InitializeResult; resume: string | null; noAnim?: boolean;
 }) {
   const brand = info.brand;
-  const [themeName, setThemeName] = useState(brand.theme || "lathe-dark");
+  const [themeName, setThemeName] = useState(brand.theme || "turnwright-dark");
   const theme = useMemo(() => {
     const t = loadTheme(themeName, brand);
     return noAnim ? { ...t, motion: false } : t;
@@ -200,7 +200,7 @@ export function App({ client, info, resume, noAnim }: {
     } else {
       setPicker({
         kind,
-        items: ["lathe-dark", "lathe-light"].map((t) => ({ name: t, value: t })),
+        items: ["turnwright-dark", "turnwright-light"].map((t) => ({ name: t, value: t })),
       });
     }
   }, [client]);

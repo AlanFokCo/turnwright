@@ -2,7 +2,7 @@
 # build-dist.sh — build npm distribution artifacts. Runs on the release node
 # (Linux x86_64); Go cross-compiles, the TUI bundle is platform-independent.
 #
-# Usage: scripts/build-dist.sh [version]   (default: @lathe/cli package.json)
+# Usage: scripts/build-dist.sh [version]   (default: @turnwright/cli package.json)
 #
 # Output:
 #   tui/packages/cli/dist/tui.js          bundled TUI (externals: opentui, react)
@@ -18,7 +18,7 @@ command -v go >/dev/null || { echo "go not found"; exit 1; }
 command -v bun >/dev/null || { echo "bun not found"; exit 1; }
 command -v node >/dev/null || { echo "node not found"; exit 1; }
 
-echo "== lathe dist build v$VERSION =="
+echo "== turnwright dist build v$VERSION =="
 rm -rf "$DIST"
 mkdir -p "$DIST" "$ROOT/tui/packages/cli/dist"
 
@@ -33,14 +33,14 @@ for p in $PLATFORMS; do
   echo "-- engine $os/$arch"
   mkdir -p "$dir/bin"
   (cd "$ROOT" && GOOS=$os GOARCH=$arch go build -trimpath \
-    -ldflags "-s -w -X github.com/alanfokco/lathe/internal/config.Version=$VERSION" \
-    -o "$dir/bin/lathe-engine" ./cmd/lathe-engine)
-  chmod +x "$dir/bin/lathe-engine"
+    -ldflags "-s -w -X github.com/alanfokco/turnwright/internal/config.Version=$VERSION" \
+    -o "$dir/bin/turnwright-engine" ./cmd/turnwright-engine)
+  chmod +x "$dir/bin/turnwright-engine"
   cat > "$dir/package.json" <<JSON
 {
-  "name": "@lathe/engine-$os-$arch",
+  "name": "@turnwright/engine-$os-$arch",
   "version": "$VERSION",
-  "description": "lathe engine binary ($os/$arch)",
+  "description": "turnwright engine binary ($os/$arch)",
   "os": ["$os"],
   "cpu": ["$arch"],
   "files": ["bin"],

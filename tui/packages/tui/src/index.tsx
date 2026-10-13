@@ -1,4 +1,4 @@
-/** lathe TUI entry: resolve engine, wire LCP, render the app. */
+/** turnwright TUI entry: resolve engine, wire LCP, render the app. */
 
 import React from "react";
 import { existsSync } from "node:fs";
@@ -7,27 +7,27 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
-import { EngineClient } from "@lathe/core";
+import { EngineClient } from "@turnwright/core";
 import { App } from "./App.js";
 
 export function resolveEnginePath(): string {
-  if (process.env.LATHE_ENGINE && existsSync(process.env.LATHE_ENGINE)) {
-    return process.env.LATHE_ENGINE;
+  if (process.env.TURNWRIGHT_ENGINE && existsSync(process.env.TURNWRIGHT_ENGINE)) {
+    return process.env.TURNWRIGHT_ENGINE;
   }
   let dir = dirname(fileURLToPath(import.meta.url));
   for (let i = 0; i < 6; i++) {
-    const candidate = join(dir, "lathe-engine");
+    const candidate = join(dir, "turnwright-engine");
     if (existsSync(candidate)) return candidate;
     dir = dirname(dir);
   }
-  const pkg = `@lathe/engine-${process.platform}-${process.arch}`;
+  const pkg = `@turnwright/engine-${process.platform}-${process.arch}`;
   try {
-    const bin = createRequire(import.meta.url).resolve(`${pkg}/bin/lathe-engine`);
+    const bin = createRequire(import.meta.url).resolve(`${pkg}/bin/turnwright-engine`);
     if (existsSync(bin)) return bin;
   } catch {
     // fall through to PATH
   }
-  return "lathe-engine";
+  return "turnwright-engine";
 }
 
 export function parseArgs(argv: string[]): { resume: string | null; engineArgs: string[]; noAnim: boolean } {
@@ -51,7 +51,7 @@ export function parseArgs(argv: string[]): { resume: string | null; engineArgs: 
 
 async function main() {
   const t0 = performance.now();
-  const timing = process.env.LATHE_TIMING ? (mark: string) =>
+  const timing = process.env.TURNWRIGHT_TIMING ? (mark: string) =>
     process.stderr.write(`[timing] ${mark}: ${(performance.now() - t0).toFixed(1)}ms\n`) : () => {};
   const { resume, engineArgs, noAnim } = parseArgs(process.argv.slice(2));
   // spawn the engine first so its process boot overlaps renderer setup
@@ -75,6 +75,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error("lathe:", e.message ?? e);
+  console.error("turnwright:", e.message ?? e);
   process.exit(1);
 });

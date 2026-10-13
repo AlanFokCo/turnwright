@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** lathe launcher: resolve the Go engine + run the TUI (bun runtime). */
+/** turnwright launcher: resolve the Go engine + run the TUI (bun runtime). */
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -9,27 +9,27 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 
 function resolveEngine() {
-  if (process.env.LATHE_ENGINE && existsSync(process.env.LATHE_ENGINE)) {
-    return process.env.LATHE_ENGINE;
+  if (process.env.TURNWRIGHT_ENGINE && existsSync(process.env.TURNWRIGHT_ENGINE)) {
+    return process.env.TURNWRIGHT_ENGINE;
   }
   // dev checkout: engine binary at repo root
   let dir = here;
   for (let i = 0; i < 8; i++) {
-    const dev = join(dir, "lathe-engine");
+    const dev = join(dir, "turnwright-engine");
     if (existsSync(dev)) return dev;
     dir = dirname(dir);
   }
   // installed: per-platform engine package via optionalDependencies
-  const pkg = `@lathe/engine-${process.platform}-${process.arch}`;
+  const pkg = `@turnwright/engine-${process.platform}-${process.arch}`;
   try {
-    const bin = import.meta.resolve(`${pkg}/bin/lathe-engine`);
+    const bin = import.meta.resolve(`${pkg}/bin/turnwright-engine`);
     if (bin) return fileURLToPath(bin);
   } catch {}
-  return "lathe-engine"; // PATH fallback
+  return "turnwright-engine"; // PATH fallback
 }
 
 function resolveTuiEntry() {
-  // installed: bundled TUI shipped inside @lathe/cli
+  // installed: bundled TUI shipped inside @turnwright/cli
   const bundled = join(here, "..", "dist", "tui.js");
   if (existsSync(bundled)) return bundled;
   // dev checkout: run from source
@@ -45,12 +45,12 @@ function resolveTuiEntry() {
 const engine = resolveEngine();
 const tuiEntry = resolveTuiEntry();
 if (!tuiEntry) {
-  console.error("lathe: cannot locate the TUI bundle. Reinstall @lathe/cli.");
+  console.error("turnwright: cannot locate the TUI bundle. Reinstall @turnwright/cli.");
   process.exit(1);
 }
 
 const child = spawn("bun", [tuiEntry, ...process.argv.slice(2)], {
   stdio: "inherit",
-  env: { ...process.env, LATHE_ENGINE: engine },
+  env: { ...process.env, TURNWRIGHT_ENGINE: engine },
 });
 child.on("exit", (code) => process.exit(code ?? 0));

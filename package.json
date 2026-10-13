@@ -1,10 +1,10 @@
 {
-  "name": "lathe",
+  "name": "turnwright",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter @lathe/tui dev",
+    "dev": "pnpm --filter @turnwright/tui dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },

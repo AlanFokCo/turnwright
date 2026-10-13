@@ -9,7 +9,7 @@
 *.dylib
 
 # lathe build output (go build -o lathe ./cmd/lathe)
-/lathe
+/turnwright
 
 # Test binary, built with `go test -c`
 *.test
@@ -29,7 +29,7 @@ dist/
 *.tsbuildinfo
 
 # engine binary (v2)
-/lathe-engine
+/turnwright-engine
 
 # Go workspace file
 go.work

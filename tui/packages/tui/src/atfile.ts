@@ -54,7 +54,7 @@ export function completeAtPath(prefix: string, cwd: string, limit = 20): string[
     }
     for (const e of entries) {
       if (out.length >= limit) return;
-      if (e.name.startsWith(".") && e.name !== ".lathe") continue;
+      if (e.name.startsWith(".") && e.name !== ".turnwright") continue;
       if (e.isDirectory() && SKIP_DIRS.has(e.name)) continue;
       const abs = join(dir, e.name);
       const rel = relative(cwd, abs);

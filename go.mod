@@ -1,4 +1,4 @@
-module github.com/alanfokco/lathe
+module github.com/alanfokco/turnwright
 
 go 1.26.3
 

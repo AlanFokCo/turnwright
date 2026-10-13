@@ -1,4 +1,4 @@
-// lathe-engine is the Go engine binary of lathe. It is an assembly layer over
+// turnwright-engine is the Go engine binary of turnwright. It is an assembly layer over
 // agentscope-go: `serve` speaks LCP (JSON-RPC 2.0 over stdio) for the
 // TypeScript TUI; `-p` runs a non-interactive print turn.
 package main
@@ -13,9 +13,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/alanfokco/lathe/internal/config"
-	"github.com/alanfokco/lathe/internal/lcp"
-	"github.com/alanfokco/lathe/internal/printmode"
+	"github.com/alanfokco/turnwright/internal/config"
+	"github.com/alanfokco/turnwright/internal/lcp"
+	"github.com/alanfokco/turnwright/internal/printmode"
 )
 
 var version = config.Version
@@ -31,7 +31,7 @@ func main() {
 	if errors.As(err, &ee) {
 		os.Exit(int(ee)) // printmode already reported the cause
 	}
-	fmt.Fprintln(os.Stderr, "lathe:", err)
+	fmt.Fprintln(os.Stderr, "turnwright:", err)
 	os.Exit(1)
 }
 
@@ -39,10 +39,10 @@ func newRootCmd() *cobra.Command {
 	var f config.Flags
 
 	root := &cobra.Command{
-		Use:           "lathe-engine",
+		Use:           "turnwright-engine",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		Short: "lathe engine — a coding agent assembled on agentscope-go",
+		Short: "turnwright engine — a coding agent assembled on agentscope-go",
 		Version: version,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.Load(f)
@@ -51,7 +51,7 @@ func newRootCmd() *cobra.Command {
 			}
 			cwd, _ := os.Getwd()
 			if cfg.Prompt == "" {
-				return fmt.Errorf("no prompt: pass -p/--prompt, or use `lathe-engine serve` with the TypeScript TUI (npm i -g @lathe/cli)")
+				return fmt.Errorf("no prompt: pass -p/--prompt, or use `turnwright-engine serve` with the TypeScript TUI (npm i -g @turnwright/cli)")
 			}
 			if code := printmode.Run(cmd.Context(), cfg, cwd); code != 0 {
 				return exitError(code)

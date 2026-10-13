@@ -19,7 +19,7 @@ test("tool diff output renders via <diff>", async () => {
       state: "success",
     }],
   };
-  root.render(<box flexDirection="column"><MessageView entry={reply} theme={builtinTheme("lathe-dark")} /></box>);
+  root.render(<box flexDirection="column"><MessageView entry={reply} theme={builtinTheme("turnwright-dark")} /></box>);
   for (let i = 0; i < 6; i++) await setup.renderOnce();
   const frame = setup.captureCharFrame();
   console.log(JSON.stringify(frame));

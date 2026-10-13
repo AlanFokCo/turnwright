@@ -5,15 +5,15 @@ import React from "react";
 import { EventEmitter } from "node:events";
 import { createTestRenderer, type TestRendererSetup } from "@opentui/core/testing";
 import { createRoot, type Root } from "@opentui/react";
-import type { AgentEvent, ApprovalRequest, ConfirmResult, InitializeResult } from "@lathe/core";
+import type { AgentEvent, ApprovalRequest, ConfirmResult, InitializeResult } from "@turnwright/core";
 import { App } from "../src/App.js";
 
 const fakeInfo: InitializeResult = {
   protocolVersion: 1,
   version: "test",
   brand: {
-    name: "lathe", tagline: "the coding lathe — shape your code",
-    accent: "#F59E0B", logo: ["LATHE"], theme: "lathe-dark",
+    name: "turnwright", tagline: "the coding turnwright — shape your code",
+    accent: "#F59E0B", logo: ["TURNWRIGHT"], theme: "turnwright-dark",
   },
   provider: "fake", model: "fake-model", cwd: process.cwd(),
   capabilities: {},
@@ -92,19 +92,19 @@ afterEach(async () => {
 describe("App", () => {
   test("welcome hero + status line render", async () => {
     const frame = setup.captureCharFrame();
-    expect(frame).toContain("LATHE");
-    expect(frame).toContain("the coding lathe");
+    expect(frame).toContain("TURNWRIGHT");
+    expect(frame).toContain("the coding turnwright");
     expect(frame).toContain("fake-model");
     expect(frame).toContain("accept_edits");
   });
 
   test("typing and submitting a prompt streams the reply", async () => {
-    await type("hello lathe");
+    await type("hello turnwright");
     await enter();
     await pump(6);
     const frame = setup.captureCharFrame();
-    expect(frame).toContain("pong: hello lathe");
-    expect(client.lastInput).toBe("hello lathe");
+    expect(frame).toContain("pong: hello turnwright");
+    expect(client.lastInput).toBe("hello turnwright");
   });
 
   test("/help lists commands", async () => {
@@ -155,11 +155,11 @@ describe("App", () => {
   });
 
   test("/theme switches palette", async () => {
-    await type("/theme lathe-light");
+    await type("/theme turnwright-light");
     await enter();
     await pump();
     const frame = setup.captureCharFrame();
-    expect(frame).toContain("lathe-light");
+    expect(frame).toContain("turnwright-light");
   });
 
   test("vim normal mode blocks insertion and edits", async () => {

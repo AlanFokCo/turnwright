@@ -10,7 +10,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// TOMLFile is the on-disk shape of ~/.lathe/config.toml (M9e). All fields are
+// TOMLFile is the on-disk shape of ~/.turnwright/config.toml (M9e). All fields are
 // optional; missing keys fall through to env then defaults. Field names use
 // snake_case per TOML convention.
 type TOMLFile struct {
@@ -35,14 +35,14 @@ type TOMLFile struct {
 	Path string `toml:"-"`
 }
 
-// DefaultTOMLPath returns ~/.lathe/config.toml, or "" when the home dir is
+// DefaultTOMLPath returns ~/.turnwright/config.toml, or "" when the home dir is
 // unresolvable.
 func DefaultTOMLPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return ""
 	}
-	return filepath.Join(home, ".lathe", "config.toml")
+	return filepath.Join(home, ".turnwright", "config.toml")
 }
 
 // LoadTOML reads a config TOML file. Returns a zero-value TOMLFile with

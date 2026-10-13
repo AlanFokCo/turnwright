@@ -1,6 +1,6 @@
 /** Chat state: an event-sourced reducer fed by the agentscope event stream. */
 
-import type { AgentEvent, ToolCallBlock } from "@lathe/core";
+import type { AgentEvent, ToolCallBlock } from "@turnwright/core";
 
 export interface ToolEntry {
   id: string;

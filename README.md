@@ -1,17 +1,17 @@
-# lathe
+# turnwright
 
 > A common coding agent for the terminal — in the mold of Claude Code, Codex
 > CLI, and qwen-code — assembled entirely on
 > [agentscope-go](https://github.com/agentscope-ai/agentscope-go), with a
 > TypeScript TUI.
 
-lathe is deliberately **two halves bolted together by a protocol**:
+turnwright is deliberately **two halves bolted together by a protocol**:
 
-- **`lathe-engine` (Go)** — a thin assembly layer over agentscope-go. The agent
+- **`turnwright-engine` (Go)** — a thin assembly layer over agentscope-go. The agent
   loop, tools, permissions, sessions, skills, MCP, and context compression all
-  come from agentscope-go; lathe writes none of that itself, it only wires
+  come from agentscope-go; turnwright writes none of that itself, it only wires
   blocks together and exposes them over **LCP** (JSON-RPC 2.0 NDJSON on stdio).
-- **`lathe` TUI (TypeScript)** — an [OpenTUI](https://github.com/sst/opentui)
+- **`turnwright` TUI (TypeScript)** — an [OpenTUI](https://github.com/sst/opentui)
   + React client of LCP. It renders the stream, collects input, and never
   touches engine internals.
 
@@ -34,8 +34,8 @@ Pre-release (alpha). v2 rebuild:
 ## Install
 
 ```sh
-npm i -g @lathe/cli        # engine arrives via per-platform optionalDependencies
-lathe                      # requires bun ≥1.4 on PATH (OpenTUI needs node:ffi)
+npm i -g @turnwright/cli        # engine arrives via per-platform optionalDependencies
+turnwright                      # requires bun ≥1.4 on PATH (OpenTUI needs node:ffi)
 ```
 
 ## Requirements (from source)
@@ -49,7 +49,7 @@ lathe                      # requires bun ≥1.4 on PATH (OpenTUI needs node:ffi
 ## Run from source
 
 ```sh
-go build -o lathe-engine ./cmd/lathe-engine   # engine lands at repo root
+go build -o turnwright-engine ./cmd/turnwright-engine   # engine lands at repo root
 pnpm install
 pnpm dev                                     # TUI; forwards flags to engine
 pnpm dev -- --model qwen-plus --config none  # e.g. pick a model ad hoc
@@ -58,12 +58,12 @@ pnpm dev -- --model qwen-plus --config none  # e.g. pick a model ad hoc
 Non-interactive print mode (no TUI):
 
 ```sh
-./lathe-engine -p "explain this repo" --output text         # or stream-json
+./turnwright-engine -p "explain this repo" --output text         # or stream-json
 ```
 
 ## Config
 
-`~/.lathe/config.toml` — all optional:
+`~/.turnwright/config.toml` — all optional:
 
 ```toml
 provider   = "dashscope"
@@ -76,10 +76,10 @@ name    = "myagent"
 tagline = "ships code, asks questions later"
 accent  = "#7C3AED"
 logo    = ["█▀▄▀█ █▄█", "█ ▀ █  █ "]
-theme   = "lathe-dark"
+theme   = "turnwright-dark"
 ```
 
-Themes are JSON files in `~/.lathe/themes/<name>.json` that override semantic
+Themes are JSON files in `~/.turnwright/themes/<name>.json` that override semantic
 color slots, the icon set, and motion flags; `[brand] accent` repaints the
 accent everywhere. `/theme <name>` switches live.
 
@@ -95,7 +95,7 @@ accent everywhere. `/theme <name>` switches live.
 
 ```sh
 go test ./internal/...         # engine, hermetic (mock model)
-pnpm --filter @lathe/tui test:ui   # TUI interaction tests (bun)
+pnpm --filter @turnwright/tui test:ui   # TUI interaction tests (bun)
 pnpm typecheck
 ```
 

@@ -6,7 +6,7 @@ import { completeAtPath, expandAtFiles } from "../src/atfile.js";
 
 describe("@file", () => {
   it("expands existing files and reports missing ones", () => {
-    const dir = mkdtempSync(join(tmpdir(), "lathe-at-"));
+    const dir = mkdtempSync(join(tmpdir(), "turnwright-at-"));
     writeFileSync(join(dir, "a.ts"), "export const a = 1;\n");
     const { text, missing } = expandAtFiles("check @a.ts and @gone.ts", dir);
     expect(text).toContain('<file path="a.ts">');
@@ -15,7 +15,7 @@ describe("@file", () => {
   });
 
   it("completes paths while skipping node_modules", () => {
-    const dir = mkdtempSync(join(tmpdir(), "lathe-cp-"));
+    const dir = mkdtempSync(join(tmpdir(), "turnwright-cp-"));
     mkdirSync(join(dir, "src"));
     mkdirSync(join(dir, "node_modules"));
     writeFileSync(join(dir, "src", "app.ts"), "");
