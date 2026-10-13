@@ -1,6 +1,9 @@
 // Package config resolves lathe's runtime configuration: provider, model,
-// API key, permission mode, output format. Resolution order: flag > env
-// (credential.FromEnv) > defaults. (TOML file loading is a later refinement.)
+// API key, permission mode, output format. Resolution order:
+// flag > env > TOML (~/.lathe/config.toml) > defaults.
+//
+// lathe v2: this package is pure assembly glue — all agent capability
+// (turn loop, permissions, compression, sessions) lives in agentscope-go.
 package config
 
 import (
@@ -9,12 +12,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alanfokco/agentscope-go/v2/pkg/agentscope/credential"
+	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/credential"
 )
 
-// Version is the lathe version surfaced to the statusline payload. Wire to
-// ldflags / debug.ReadBuildInfo before publishing.
-const Version = "0.1.0-dev"
+// Version is the lathe version surfaced in --version and LCP initialize.
+const Version = "2.0.0-dev"
 
 // Output is the print-mode output format.
 type Output string
@@ -24,9 +26,34 @@ const (
 	OutputStreamJSON Output = "stream-json"
 )
 
+// Brand is the product identity surfaced by the TUI (welcome hero, status
+// line, terminal title). Forks rebrand lathe by editing config only.
+type Brand struct {
+	Name    string   `toml:"name" json:"name"`
+	Tagline string   `toml:"tagline" json:"tagline"`
+	Accent  string   `toml:"accent" json:"accent"` // hex color, e.g. "#F59E0B"
+	Logo    []string `toml:"logo" json:"logo"`   // ASCII art, one string per line
+	Theme   string   `toml:"theme" json:"theme"` // default theme name
+}
+
+// DefaultBrand is lathe's own visual identity.
+func DefaultBrand() Brand {
+	return Brand{
+		Name:    "lathe",
+		Tagline: "the coding lathe — shape your code",
+		Accent:  "#F59E0B",
+		Logo: []string{
+			"┬   ┌─┐ ┌┬┐ ┬ ┬ ┌─┐",
+			"│   ├─┤  │  ├─┤ ├┤ ",
+			"┴─┘ ┴ ┴  ┴  ┴ ┴ └─┘",
+		},
+		Theme: "lathe-dark",
+	}
+}
+
 // Config is the resolved runtime configuration.
 type Config struct {
-	Provider   string // anthropic | openai | dashscope
+	Provider   string // anthropic | openai | dashscope | deepseek | gemini | moonshot | kimi | xai | ollama
 	Model      string
 	APIKey     string
 	BaseURL    string
@@ -36,78 +63,55 @@ type Config struct {
 	Prompt     string
 	Resume     string
 	Continue   bool
-	Sandbox    string // "" | docker | e2b
-	// M6a: resilience knobs for the model wrapper (circuit breaker + rate limit).
-	CircuitBreakerThreshold int     // consecutive failures before the breaker opens (default 5)
-	RateLimitPerSec         float64 // model calls/sec (0 = unlimited)
-	RateBurst               int     // burst allowance for the rate limiter
-	Theme                   string  // M6b: TUI theme name (lathe-dark | light)
-	Thinking                bool    // M7a: enable Anthropic extended thinking
-	ThinkingBudget          int     // M7a: thinking token budget (0 = provider default)
-	ReasoningEffort         string  // M7b: OpenAI reasoning effort ("low"|"medium"|"high"); "" = provider default
-	Jail                    bool    // M7f: confine file tools to cwd via tool.WithWorkspaceRoot
-	PromptCaching           bool    // M8a: enable Anthropic prompt caching (system + tools)
-	CompactRatio            float64 // M9d: fraction of context that triggers auto-compact (0 = disabled)
-	ContextSize             int     // M9d: model context window override in tokens (0 = model-card default)
-	Notify                  bool    // M10f: OSC-9 notification + bell on turn end
-	MaxCostUSD              float64 // spend cap in USD; 0 = no limit
-	RecordTape              string  // path to record a replay tape
-	ReplayTape              string  // path to replay from a tape
+	Thinking       bool   // enable extended thinking / reasoning
+	ThinkingBudget int    // thinking token budget (0 = provider default)
+	ReasoningEffort string // "low"|"medium"|"high"; "" = provider default
+	Jail           bool   // confine file tools to cwd
+	PromptCaching  bool   // Anthropic prompt caching (system + tools)
+	CompactRatio   float64 // fraction of context triggering auto-compact (0 = default)
+	ContextSize    int     // model context window override in tokens (0 = model card)
+	Brand          Brand
 }
 
 // Flags holds CLI overrides; empty fields are unset.
 type Flags struct {
-	ConfigPath                                                                       string  // path to TOML config; "" = DefaultTOMLPath(); "none" = skip
-	Provider, Model, APIKey, BaseURL, Permission, Output, Prompt, Sandbox, Theme string
-	MaxIters                                                                     int
-	Resume                                                                       string
-	Continue                                                                     bool
-	Thinking                                                                     bool    // M7a
-	ThinkingBudget                                                               int     // M7a
-	Effort                                                                       string  // M7b: reasoning effort
-	Jail                                                                         bool    // M7f: --jail
-	PromptCaching                                                                bool    // M8a: --prompt-caching
-	CompactRatio                                                                 float64 // M9d: --compact-ratio
-	ContextSize                                                                  int     // M9d: --context-size
-	Notify                                                                       bool    // M10f: --notify
-	MaxCostUSD                                                                   float64 // --max-cost
-	RecordTape                                                                   string  // --record
-	ReplayTape                                                                   string  // --replay
+	ConfigPath                                         string // "" = DefaultTOMLPath(); "none" = skip
+	Provider, Model, APIKey, BaseURL, Permission       string
+	Output, Prompt                                     string
+	MaxIters                                           int
+	Resume                                             string
+	Continue                                           bool
+	Thinking                                           bool
+	ThinkingBudget                                     int
+	Effort                                             string
+	Jail                                               bool
+	PromptCaching                                      bool
+	CompactRatio                                       float64
+	ContextSize                                        int
 }
 
-// Load resolves a Config from flags + env + TOML + defaults (M9e). Resolution
-// order: flag > env > TOML (~/.lathe/config.toml) > defaults.
+// Load resolves a Config from flags + env + TOML + defaults.
 func Load(f Flags) (*Config, error) {
-	// M9e: fill empty flag fields from TOML first, so the downstream
-	// flag/env resolution still gets to override anything the user set
-	// explicitly. ConfigPath overrides DefaultTOMLPath(); "none" or
-	// "/dev/null" skips TOML loading entirely (useful for tests).
 	tomlPath := f.ConfigPath
 	if tomlPath == "" {
 		tomlPath = DefaultTOMLPath()
 	}
+	var t TOMLFile
 	if tomlPath != "none" && tomlPath != "/dev/null" {
-		if t, terr := LoadTOML(tomlPath); terr != nil {
+		var terr error
+		if t, terr = LoadTOML(tomlPath); terr != nil {
 			return nil, terr
-		} else {
-			f = mergeTOMLIntoFlags(f, t)
 		}
+		f = mergeTOMLIntoFlags(f, t)
 	}
 	cfg := &Config{
-		Permission:              "accept_edits",
-		Output:                  OutputText,
-		MaxIters:                50,
-		Prompt:                  f.Prompt,
-		Resume:                  f.Resume,
-		Continue:                f.Continue,
-		Sandbox:                 f.Sandbox,
-		CircuitBreakerThreshold: 5,            // M6a: default breaker threshold
-		Theme:                   "lathe-dark", // M6b: default theme
-	}
-	if f.Theme != "" {
-		cfg.Theme = f.Theme
-	} else if e := os.Getenv("LATHE_THEME"); e != "" {
-		cfg.Theme = e
+		Brand:      DefaultBrand(),
+		Permission: "accept_edits",
+		Output:     OutputText,
+		MaxIters:   50,
+		Prompt:     f.Prompt,
+		Resume:     f.Resume,
+		Continue:   f.Continue,
 	}
 	if f.Permission != "" {
 		cfg.Permission = f.Permission
@@ -118,16 +122,10 @@ func Load(f Flags) (*Config, error) {
 	if f.MaxIters > 0 {
 		cfg.MaxIters = f.MaxIters
 	}
-	// M7a: extended thinking — flag > env > off. Budget defaults to 4096
-	// tokens when thinking is enabled but no explicit budget is given
-	// (Anthropic's minimum useful budget; leaves plenty of room in an 8k
-	// max-output-tokens envelope).
 	cfg.Thinking = f.Thinking
 	cfg.ThinkingBudget = f.ThinkingBudget
-	if !cfg.Thinking {
-		if envTruthy(os.Getenv("LATHE_THINKING")) {
-			cfg.Thinking = true
-		}
+	if !cfg.Thinking && envTruthy(os.Getenv("LATHE_THINKING")) {
+		cfg.Thinking = true
 	}
 	if cfg.Thinking && cfg.ThinkingBudget == 0 {
 		if e := os.Getenv("LATHE_THINKING_BUDGET"); e != "" {
@@ -139,29 +137,18 @@ func Load(f Flags) (*Config, error) {
 			cfg.ThinkingBudget = 4096
 		}
 	}
-	// M7b: reasoning effort. Flag > env; empty leaves provider defaults.
 	cfg.ReasoningEffort = f.Effort
 	if cfg.ReasoningEffort == "" {
 		cfg.ReasoningEffort = os.Getenv("LATHE_EFFORT")
 	}
-	// M7f: workspace-root jail. Flag > env; default off so existing scripts
-	// that touch files outside cwd keep working (users opt in for hardening).
 	cfg.Jail = f.Jail
 	if !cfg.Jail && envTruthy(os.Getenv("LATHE_JAIL")) {
 		cfg.Jail = true
 	}
-	// M8a: Anthropic prompt caching. Flag > env; default off so wire format
-	// stays byte-identical for callers who do not opt in. Non-Anthropic
-	// providers ignore the flag (buildChatModel only threads it into the
-	// AnthropicConfig).
 	cfg.PromptCaching = f.PromptCaching
 	if !cfg.PromptCaching && envTruthy(os.Getenv("LATHE_PROMPT_CACHING")) {
 		cfg.PromptCaching = true
 	}
-	// M9d: auto-compact tuning. Ratio clamps to [0, 0.95] so a stray 1.0
-	// setting cannot disable compression by never triggering. Negative
-	// values disable it entirely (0). ContextSize is passed through raw;
-	// the engine falls back to the model card when it is 0.
 	cfg.CompactRatio = f.CompactRatio
 	if cfg.CompactRatio < 0 {
 		cfg.CompactRatio = 0
@@ -170,38 +157,46 @@ func Load(f Flags) (*Config, error) {
 		cfg.CompactRatio = 0.95
 	}
 	cfg.ContextSize = f.ContextSize
-	// M10f: OSC-9 notification. Flag > env; default off.
-	cfg.Notify = f.Notify
-	if !cfg.Notify && envTruthy(os.Getenv("LATHE_NOTIFY")) {
-		cfg.Notify = true
+	if t.Brand.Name != "" {
+		cfg.Brand.Name = t.Brand.Name
 	}
-	// Spend cap: flag only (env could come later).
-	cfg.MaxCostUSD = f.MaxCostUSD
-	// Replay tape paths: flag only.
-	cfg.RecordTape = f.RecordTape
-	cfg.ReplayTape = f.ReplayTape
+	if t.Brand.Tagline != "" {
+		cfg.Brand.Tagline = t.Brand.Tagline
+	}
+	if t.Brand.Accent != "" {
+		cfg.Brand.Accent = t.Brand.Accent
+	}
+	if len(t.Brand.Logo) > 0 {
+		cfg.Brand.Logo = t.Brand.Logo
+	}
+	if t.Brand.Theme != "" {
+		cfg.Brand.Theme = t.Brand.Theme
+	}
 
 	if f.Provider != "" {
 		cfg.Provider = f.Provider
 		cfg.BaseURL = f.BaseURL
 		cfg.APIKey = f.APIKey
 		if cfg.APIKey == "" {
-			cfg.APIKey = os.Getenv(envKeyFor(cfg.Provider))
+			if cred := credential.FromEnvForProvider(f.Provider); cred != nil {
+				cfg.APIKey = cred.APIKey()
+				if cfg.BaseURL == "" {
+					cfg.BaseURL = cred.BaseURL()
+				}
+			}
 		}
 		cfg.Model = pickDefaultModel(cfg.Provider, f.Model)
 	} else {
 		cred := credential.FromEnv()
 		if cred == nil {
-			return nil, fmt.Errorf("no API key: set ANTHROPIC_API_KEY / OPENAI_API_KEY / DASHSCOPE_API_KEY or pass --provider/--api-key")
+			return nil, fmt.Errorf("no API key: set ANTHROPIC_API_KEY / OPENAI_API_KEY / DASHSCOPE_API_KEY / GEMINI_API_KEY / DEEPSEEK_API_KEY / MOONSHOT_API_KEY / XAI_API_KEY or pass --provider/--api-key")
 		}
 		cfg.Provider = cred.Provider()
 		cfg.APIKey = cred.APIKey()
 		cfg.BaseURL = cred.BaseURL()
 		cfg.Model = pickDefaultModel(cfg.Provider, f.Model)
 	}
-	// M5a: ollama reuses the OpenAI client against a local OpenAI-compatible
-	// endpoint. Ollama needs no key, but the OpenAI client requires a non-empty
-	// APIKey, so default to a dummy. base-url defaults to the standard Ollama port.
+	// Ollama needs no key; default base URL to the standard local port.
 	if cfg.Provider == "ollama" {
 		if cfg.BaseURL == "" {
 			cfg.BaseURL = "http://localhost:11434"
@@ -222,33 +217,29 @@ func pickDefaultModel(provider, override string) string {
 	}
 	switch provider {
 	case "anthropic":
-		return "claude-sonnet-4-20250514"
+		return "claude-sonnet-4-5"
 	case "openai":
 		return "gpt-4o-mini"
 	case "dashscope":
 		return "qwen-plus"
+	case "deepseek":
+		return "deepseek-chat"
+	case "gemini":
+		return "gemini-2.5-flash"
+	case "moonshot", "kimi":
+		return "kimi-k2.7-code"
+	case "xai":
+		return "grok-4-fast"
 	}
 	return override
 }
 
-// envTruthy is the same tri-value convention used by Docker/git tooling:
-// "1"/"true"/"yes"/"on" enable, everything else (including empty) is off.
+// envTruthy follows the Docker/git tri-value convention: "1"/"true"/"yes"/"on"
+// enable, everything else (including empty) is off.
 func envTruthy(v string) bool {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case "1", "true", "yes", "on":
 		return true
 	}
 	return false
-}
-
-func envKeyFor(provider string) string {
-	switch provider {
-	case "anthropic":
-		return "ANTHROPIC_API_KEY"
-	case "openai":
-		return "OPENAI_API_KEY"
-	case "dashscope":
-		return "DASHSCOPE_API_KEY"
-	}
-	return ""
 }

@@ -1,0 +1,9 @@
+{
+  "name": "@lathe/cli",
+  "version": "2.0.0-dev",
+  "type": "module",
+  "bin": { "lathe": "./bin/lathe.js" },
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run" },
+  "dependencies": { "@lathe/tui": "workspace:*" },
+  "devDependencies": { "typescript": "^5.9.0", "@types/node": "^22.0.0", "vitest": "^3.0.0" }
+}

@@ -19,9 +19,7 @@ type TOMLFile struct {
 	BaseURL        string  `toml:"base_url"`
 	APIKey         string  `toml:"api_key"`
 	Permission     string  `toml:"permission"`
-	Theme          string  `toml:"theme"`
 	MaxIters       int     `toml:"max_iters"`
-	Sandbox        string  `toml:"sandbox"`
 	Thinking       bool    `toml:"thinking"`
 	ThinkingBudget int     `toml:"thinking_budget"`
 	Effort         string  `toml:"effort"`
@@ -29,7 +27,7 @@ type TOMLFile struct {
 	PromptCaching  bool    `toml:"prompt_caching"`
 	CompactRatio   float64 `toml:"compact_ratio"`
 	ContextSize    int     `toml:"context_size"`
-	MaxCostUSD     float64 `toml:"max_cost_usd"`
+	Brand          Brand   `toml:"brand"`
 	// Loaded reports whether the file was found and parsed (informational for
 	// /doctor). Not serialized.
 	Loaded bool `toml:"-"`
@@ -94,14 +92,8 @@ func mergeTOMLIntoFlags(f Flags, t TOMLFile) Flags {
 	if f.Permission == "" {
 		f.Permission = t.Permission
 	}
-	if f.Theme == "" {
-		f.Theme = t.Theme
-	}
 	if f.MaxIters == 0 {
 		f.MaxIters = t.MaxIters
-	}
-	if f.Sandbox == "" {
-		f.Sandbox = t.Sandbox
 	}
 	if !f.Thinking {
 		f.Thinking = t.Thinking
@@ -123,9 +115,6 @@ func mergeTOMLIntoFlags(f Flags, t TOMLFile) Flags {
 	}
 	if f.ContextSize == 0 {
 		f.ContextSize = t.ContextSize
-	}
-	if f.MaxCostUSD == 0 {
-		f.MaxCostUSD = t.MaxCostUSD
 	}
 	return f
 }

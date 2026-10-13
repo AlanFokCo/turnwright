@@ -23,6 +23,14 @@ profile.cov
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+# Node / TUI
+node_modules/
+dist/
+*.tsbuildinfo
+
+# engine binary (v2)
+/lathe-engine
+
 # Go workspace file
 go.work
 go.work.sum
@@ -36,3 +44,7 @@ go.work.sum
 
 # Local-only design docs (brainstorming specs/plans) — keep local, not on GitHub
 docs/superpowers/
+
+# local agent state dirs
+.remember/
+.qwen/
