@@ -16,6 +16,7 @@ import (
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/agent"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/event"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/model"
+	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/permission"
 
 	"github.com/alanfokco/lathe/internal/assemble"
 	"github.com/alanfokco/lathe/internal/config"
@@ -175,6 +176,18 @@ func (s *Server) handleRequest(ctx context.Context, msg wireMessage) {
 			break
 		}
 		result, err = s.modelSet(ctx, p.SessionID, p.Model)
+	case "session/set_permission":
+		var p struct {
+			SessionID string `json:"sessionId"`
+			Mode      string `json:"mode"`
+		}
+		if e := json.Unmarshal(msg.Params, &p); e != nil || p.SessionID == "" || p.Mode == "" {
+			err = errInvalidParams
+			break
+		}
+		result, err = s.sessionSetPermission(p.SessionID, p.Mode)
+	case "model/list":
+		result = s.modelList()
 	case "config/get":
 		result = map[string]any{
 			"provider": s.cfg.Provider, "model": s.cfg.Model,
@@ -370,6 +383,43 @@ func (s *Server) turnCancel(sessionID string) (any, error) {
 		st.cancel()
 	}
 	return map[string]any{"cancelled": true}, nil
+}
+
+// sessionSetPermission mutates the live permission context between turns.
+// Safe because turns are serialized per session (st.mu held during a turn).
+func (s *Server) sessionSetPermission(sessionID, mode string) (any, error) {
+	st, ok := s.getSession(sessionID)
+	if !ok {
+		return nil, fmt.Errorf("unknown session %q", sessionID)
+	}
+	switch permission.PermissionMode(mode) {
+	case permission.ModeDefault, permission.ModeAcceptEdits, permission.ModeExplore,
+		permission.ModeBypass, permission.ModeDontAsk:
+	default:
+		return nil, errInvalidParams
+	}
+	st.h.PCtx.Mode = permission.PermissionMode(mode)
+	return map[string]any{"permission": mode}, nil
+}
+
+// modelList returns the embedded agentscope model cards for the current
+// provider (context size, thinking support), powering the /model picker.
+func (s *Server) modelList() any {
+	cards := model.ListModels(s.cfg.Provider)
+	type item struct {
+		Name        string `json:"name"`
+		Provider    string `json:"provider"`
+		ContextSize int    `json:"contextSize,omitempty"`
+		Thinking    bool   `json:"thinking,omitempty"`
+	}
+	out := make([]item, 0, len(cards))
+	for _, c := range cards {
+		out = append(out, item{
+			Name: c.Name, Provider: c.Provider,
+			ContextSize: c.ContextSize, Thinking: c.SupportsThinking(),
+		})
+	}
+	return map[string]any{"models": out, "provider": s.cfg.Provider, "current": s.cfg.Model}
 }
 
 // modelSet swaps the model of a live session. UnifiedAgent exposes no

@@ -5,6 +5,7 @@ import * as readline from "node:readline";
 import { EventEmitter } from "node:events";
 import type {
   AgentEvent,
+  ModelListResult,
   ApprovalRequest,
   ConfigSnapshot,
   ConfirmResult,
@@ -25,9 +26,31 @@ interface PendingCall {
   reject: (e: Error) => void;
 }
 
-type ApprovalHandler = (req: ApprovalRequest) => Promise<{ confirmResults: ConfirmResult[] }>;
+export type ApprovalHandler = (req: ApprovalRequest) => Promise<{ confirmResults: ConfirmResult[] }>;
 
-export class EngineClient extends EventEmitter {
+/** TuiClient is the surface the TUI consumes. EngineClient implements it;
+ *  tests inject fakes. */
+export interface TuiClient {
+  on(event: "event", handler: (ev: AgentEvent) => void): unknown;
+  on(event: string, handler: (...args: any[]) => void): unknown;
+  removeAllListeners(): unknown;
+  onApproval(h: ApprovalHandler): void;
+  sessionNew(): Promise<{ sessionId: string }>;
+  sessionResume(sessionId: string): Promise<{ sessionId: string }>;
+  sessionContinue(): Promise<{ sessionId: string }>;
+  sessionList(): Promise<{ sessions: SessionInfo[] }>;
+  sessionDelete(sessionId: string): Promise<void>;
+  sessionClose(sessionId: string): Promise<void>;
+  turnStart(sessionId: string, input: string): Promise<void>;
+  turnCancel(sessionId: string): Promise<void>;
+  modelSet(sessionId: string, model: string): Promise<{ model: string }>;
+  modelList(): Promise<ModelListResult>;
+  sessionSetPermission(sessionId: string, mode: string): Promise<void>;
+  configGet(): Promise<ConfigSnapshot>;
+  dispose(): void;
+}
+
+export class EngineClient extends EventEmitter implements TuiClient {
   private proc: ChildProcess;
   private seq = 0;
   private pending = new Map<number | string, PendingCall>();
@@ -148,6 +171,12 @@ export class EngineClient extends EventEmitter {
   }
   configGet(): Promise<ConfigSnapshot> {
     return this.call("config/get", {});
+  }
+  modelList(): Promise<ModelListResult> {
+    return this.call("model/list", {});
+  }
+  sessionSetPermission(sessionId: string, mode: string): Promise<void> {
+    return this.call("session/set_permission", { sessionId, mode });
   }
 
   dispose(): void {

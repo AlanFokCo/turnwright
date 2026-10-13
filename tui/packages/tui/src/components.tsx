@@ -1,10 +1,12 @@
 /** lathe TUI components. Every visual surface reads from Theme + Brand:
  *  rebranding or restyling never requires touching component code. */
 
-import React from "react";
-import type { Brand } from "@lathe/core";
+import React, { useMemo } from "react";
+import { useRenderer } from "@opentui/react";
+import type { Brand, ToolCallBlock } from "@lathe/core";
 import type { Theme } from "./theme.js";
 import type { Entry, ReplyEntry, ToolEntry } from "./store.js";
+import { makeMarkdownStyle } from "./markdown.js";
 
 export function WelcomeHero({ brand, theme }: { brand: Brand; theme: Theme }) {
   return (
@@ -43,6 +45,15 @@ export function MessageView({ entry, theme }: { entry: Entry; theme: Theme }) {
   return <ReplyView reply={entry} theme={theme} />;
 }
 
+function Markdown({ text, theme }: { text: string; theme: Theme }) {
+  const renderer = useRenderer();
+  const style = useMemo(() => makeMarkdownStyle(renderer, theme), [renderer, theme]);
+  if (!style) {
+    return <text fg={theme.colors.text}>{text}</text>;
+  }
+  return <markdown content={text} syntaxStyle={style} />;
+}
+
 function ReplyView({ reply, theme }: { reply: ReplyEntry; theme: Theme }) {
   return (
     <box flexDirection="column" marginTop={1} paddingX={1}>
@@ -54,7 +65,7 @@ function ReplyView({ reply, theme }: { reply: ReplyEntry; theme: Theme }) {
       )}
       {reply.text !== "" && (
         <box marginTop={reply.thinking !== "" ? 1 : 0}>
-          <text fg={theme.colors.text}>{reply.text}</text>
+          <Markdown text={reply.text} theme={theme} />
         </box>
       )}
       {reply.tools.map((t) => (
@@ -65,14 +76,18 @@ function ReplyView({ reply, theme }: { reply: ReplyEntry; theme: Theme }) {
   );
 }
 
-function toolSummary(t: ToolEntry): string {
+export function toolSummary(input: string): string {
   try {
-    const args = JSON.parse(t.input || "{}");
-    const key = ["command", "path", "file_path", "pattern", "url"].find((k) => args[k]);
-    return key ? String(args[key]).slice(0, 120) : "";
+    const args = JSON.parse(input || "{}");
+    const key = ["command", "path", "file_path", "pattern", "url", "query"].find((k) => args[k]);
+    return key ? String(args[key]).slice(0, 100) : "";
   } catch {
-    return t.input.slice(0, 120);
+    return input.slice(0, 100);
   }
+}
+
+function looksLikeDiff(s: string): boolean {
+  return /^diff --git /m.test(s) || /^@@ -\d+/m.test(s) || /^--- a\//m.test(s);
 }
 
 function ToolCard({ tool, theme }: { tool: ToolEntry; theme: Theme }) {
@@ -84,30 +99,47 @@ function ToolCard({ tool, theme }: { tool: ToolEntry; theme: Theme }) {
     : tool.state === "error" ? theme.colors.danger
     : tool.state === "denied" ? theme.colors.warn
     : theme.colors.accent;
+  const preview = tool.output.split("\n").slice(0, 8).join("\n");
+  const truncated = tool.output.split("\n").length > 8;
   return (
     <box flexDirection="column" marginTop={1}>
       <text>
         <span fg={fg}>{icon} </span>
         <span fg={theme.colors.text}><strong>{tool.name}</strong></span>
-        <span fg={theme.colors.muted}>  {toolSummary(tool)}</span>
+        <span fg={theme.colors.muted}>  {toolSummary(tool.input)}</span>
       </text>
+      {tool.state === "error" && preview !== "" && (
+        <box marginLeft={2}>
+          <text fg={theme.colors.danger}>{preview}{truncated ? "\n…" : ""}</text>
+        </box>
+      )}
+      {tool.state === "success" && looksLikeDiff(tool.output) && (
+        <box marginLeft={2}>
+          <diff diff={preview} view="unified" />
+        </box>
+      )}
     </box>
   );
 }
 
 export function ApprovalDialog({
-  toolNames, theme,
-}: { toolNames: string[]; theme: Theme }) {
+  toolCalls, theme,
+}: { toolCalls: ToolCallBlock[]; theme: Theme }) {
   return (
     <box
       border borderColor={theme.colors.warn}
       paddingX={2} paddingY={1} marginX={1} marginTop={1}
-      backgroundColor={theme.colors.surface}
+      backgroundColor={theme.colors.surface} flexShrink={0}
       flexDirection="column"
     >
       <text fg={theme.colors.warn}><strong>Approval required</strong></text>
-      {toolNames.map((n, i) => (
-        <text key={i} fg={theme.colors.text}>  {theme.icons.tool} {n}</text>
+      {toolCalls.map((tc, i) => (
+        <box key={i} flexDirection="column" marginTop={i === 0 ? 0 : 1}>
+          <text>
+            <span fg={theme.colors.text}><strong>{theme.icons.tool} {tc.name}</strong></span>
+            <span fg={theme.colors.muted}>  {toolSummary(tc.input)}</span>
+          </text>
+        </box>
       ))}
       <text fg={theme.colors.muted}>[y] allow once   [n] deny   [a] always allow</text>
     </box>
@@ -115,19 +147,25 @@ export function ApprovalDialog({
 }
 
 export function StatusLine({
-  theme, brand, model, busy, inTok, outTok, sessionId,
+  theme, brand, model, busy, inTok, outTok, sessionId, branch, permission, vimMode,
 }: {
   theme: Theme; brand: Brand; model: string; busy: boolean;
-  inTok: number; outTok: number; sessionId: string;
+  inTok: number; outTok: number; sessionId: string; branch: string; permission: string;
+  vimMode?: "insert" | "normal" | null;
 }) {
   return (
-    <box backgroundColor={theme.colors.surface} paddingX={1} flexDirection="row">
+    <box backgroundColor={theme.colors.surface} paddingX={1} flexDirection="row" flexShrink={0}>
       <text fg={theme.colors.accent}><strong>{brand.name}</strong></text>
-      <text fg={theme.colors.muted}>  {model}  │  </text>
+      {vimMode && (
+        <text fg={vimMode === "normal" ? theme.colors.warn : theme.colors.muted}>
+          {vimMode === "normal" ? "  NORM" : "  INS"}
+        </text>
+      )}
+      <text fg={theme.colors.muted}>  {model}{branch ? `  ⎇ ${branch}` : ""}  │  </text>
       <text fg={busy ? theme.colors.accent : theme.colors.muted}>
         {busy ? `${theme.icons.running} working` : "ready"}
       </text>
-      <text fg={theme.colors.muted}>  │  ↑{inTok} ↓{outTok}  │  {sessionId.slice(0, 8)}</text>
+      <text fg={theme.colors.muted}>  │  {permission}  │  ↑{inTok} ↓{outTok}  │  {sessionId.slice(0, 8)}</text>
     </box>
   );
 }

@@ -47,7 +47,10 @@ type Handle struct {
 	Agent     *agent.UnifiedAgent
 	SessionID string
 	Saver     *transcript.Saver
-	closers   []func() error
+	// PCtx is the live permission context shared with the agent; mutating its
+	// Mode changes permission behavior for subsequent tool calls.
+	PCtx    *permission.Context
+	closers []func() error
 }
 
 // Close releases MCP subprocesses etc. Safe to call multiple times.
@@ -127,7 +130,7 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 	}
 
 	tk := tool.NewEnhancedToolkit()
-	h := &Handle{}
+	h := &Handle{PCtx: pctx}
 
 	skills := loadSkills(cwd)
 	if len(skills) > 0 {

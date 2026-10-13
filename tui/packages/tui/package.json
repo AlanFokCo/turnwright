@@ -3,10 +3,11 @@
   "version": "2.0.0-dev",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.tsx",
+    "dev": "bun src/index.tsx",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:ui": "bun test"
   },
   "dependencies": {
     "@lathe/core": "workspace:*",

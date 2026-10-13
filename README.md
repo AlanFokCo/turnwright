@@ -1,198 +1,92 @@
 # lathe
 
-> A coding-agent CLI for the terminal: run an LLM in a tool-use loop against
-> your workspace, with an interactive TUI and a non-interactive print mode.
-> Built in Go on top of
-> [agentscope-go](https://github.com/alanfokco/agentscope-go), in the mold of
-> OpenAI Codex CLI and Anthropic Claude Code.
+> A common coding agent for the terminal — in the mold of Claude Code, Codex
+> CLI, and qwen-code — assembled entirely on
+> [agentscope-go](https://github.com/agentscope-ai/agentscope-go), with a
+> TypeScript TUI.
+
+lathe is deliberately **two halves bolted together by a protocol**:
+
+- **`lathe-engine` (Go)** — a thin assembly layer over agentscope-go. The agent
+  loop, tools, permissions, sessions, skills, MCP, and context compression all
+  come from agentscope-go; lathe writes none of that itself, it only wires
+  blocks together and exposes them over **LCP** (JSON-RPC 2.0 NDJSON on stdio).
+- **`lathe` TUI (TypeScript)** — an [OpenTUI](https://github.com/sst/opentui)
+  + React client of LCP. It renders the stream, collects input, and never
+  touches engine internals.
+
+Because every capability crosses one JSON-RPC seam, the TUI is replaceable and
+the engine is testable without a terminal.
 
 ## Status
 
-Pre-release, work in progress. The M1–M5b milestones are implemented and
-covered by hermetic tests:
+Pre-release. v2 rebuild in progress:
 
-- **M1** turn engine + print mode · **M2** bubbletea TUI · **M3** dynamic
-  system prompt / cost line / `/model` `/config` / auto-compact + `/compact` /
-  JSONL sessions + `--resume`/`--continue` / interactive approval
-- **M4** skills / MCP / hooks / Task subagent / sandbox
-- **M5a** Ollama provider · **M5b** configurable status line
-
-Uses `agentscope-go` v2.0.6 as a remote module dependency (fetched from the Go
-module proxy — no local checkout required).
+- **M0–M2** monorepo, LCP protocol, engine on agentscope-go `main`, TUI skeleton
+- **M3** feature parity: slash commands, `@file` expansion, `/model`,
+  session picker, themes, diff view, vim mode, approvals
+- **M4/M5** (next) visual-quality sprint, npm distribution, CI
 
 ## Requirements
 
-- **Go 1.25+** (module declares `go 1.26.3`; 1.25 is sufficient to build)
-- At least one LLM provider credential:
-  - `ANTHROPIC_API_KEY` — Anthropic (default)
-  - `OPENAI_API_KEY` — OpenAI
-  - `DASHSCOPE_API_KEY` — DashScope / Qwen
-  - Or `--provider ollama` for local models (no key needed)
+- **Go 1.25+** to build the engine
+- **Bun ≥ 1.4** to run the TUI from source (OpenTUI needs `node:ffi`; Node < 26
+  won't do)
+- One LLM credential, e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+  `DASHSCOPE_API_KEY`, … or `--provider ollama`
 
-## Features
+## Run from source
 
-- **Two modes** — interactive bubbletea TUI (streaming text, tool calls, diffs,
-  scrollback, slash commands, interactive y/n/a approval) and non-interactive
-  `lathe -p "..."` print mode (`--output text` or `--output stream-json` NDJSON).
-- **Self-built turn engine** — drives `model.ChatStream` directly (not a wrapper
-  around `UnifiedAgent`): ChatStream → accumulate → emit text/usage → append
-  assistant message → dispatch tool calls → feed results back as a user-role
-  message → repeat until `end_turn` or `--max-iters`.
-- **Cross-provider** — Anthropic, OpenAI, DashScope, and Ollama (local,
-  OpenAI-compatible; also works with lmstudio/vllm via `--base-url`).
-- **Tools & permissions** — Bash/Read/Write/Edit/Glob/Grep with a permission
-  engine (`default` · `accept_edits` · `explore` · `bypass` · `dont_ask`) and
-  interactive approval in the TUI; `always` upgrades a tool to auto-allow.
-- **Optional sandbox** — `--sandbox docker` (container mounting cwd) or `e2b`
-  (cloud); sandbox setup failure fails loudly — no silent fallback to host.
-  Skills and MCP tools are preserved when switching to the sandbox toolkit.
-- **Sessions** — JSONL transcripts under `~/.lathe/projects/<enc-cwd>/<id>.jsonl`
-  (claude-code-style project dirs); `--resume <id>` / `--continue`. Save
-  failures are logged as warnings (no silent data loss).
-- **Auto-compact & `/compact`** — conversation summarized past `0.8 × context_size` (a
-  `0.1 × ctx` tail reserved, tool_call/result pairs kept together); `/compact`
-  runs asynchronously with progress feedback (no TUI freeze).
-- **Context compression** — structured summary (`task_overview`, `current_state`,
-  `important_discoveries`, `next_steps`, `context_to_preserve`) replaces old
-  prefix messages when the context window fills up.
-- **Thinking modes** — supports model thinking/reasoning when available.
-- **Vim mode** — vim-style cursor (block in normal, bar in insert) for the
-  input area.
-- **`@file` references** — mention `@path/to/file` in prompts to inject file
-  contents into the conversation.
-- **Skills** — `SKILL.md` instruction docs discovered from `~/.lathe/skills` +
-  project `.lathe/skills` (walked cwd→repo-root); exposed via a read-only
-  `Skill` tool.
-- **MCP integration** — `.mcp.json` `stdio`/`http` servers become ordinary toolkit tools.
-- **Hooks** — `settings.json` shell-command hooks at `UserPromptSubmit` /
-  `PreToolUse` / `PostToolUse` / `Stop`; a hook may block a tool or inject
-  context. Failures are non-blocking.
-- **Task subagent** — a `Task` tool that spawns a nested builtins-only engine
-  (no `Task` → no recursion), sharing the parent's model + permission engine.
-  `/model` propagates to the subagent (TaskTool is rebuilt on model change).
-- **Configurable status line** — a `statusLine` shell command in `settings.json`
-  receives a Claude-Code-compatible JSON snapshot on stdin and its stdout
-  becomes the TUI status line; falls back to the built-in `model | perm | tokens`
-  line when unconfigured.
-- **Per-turn tok/s** — the activity line shows throughput for the current turn
-  (not cumulative across turns).
-
-## Build & run
-
-```bash
-git clone https://github.com/AlanFokCo/lathe.git && cd lathe
-go build -o lathe ./cmd/lathe
+```sh
+go build -o lathe-engine ./cmd/lathe-engine   # engine lands at repo root
+pnpm install
+pnpm dev                                     # TUI; forwards flags to engine
+pnpm dev -- --model qwen-plus --config none  # e.g. pick a model ad hoc
 ```
 
-- Build all packages: `go build ./...`
-- Test (hermetic — uses a fake model, **no API key needed**): `go test ./...`
-- Vet: `go vet ./...`
-- Lint: `golangci-lint run ./...`
-- Run TUI: `./lathe` (or `go run ./cmd/lathe`)
-- Print mode: `./lathe -p "your prompt"` (`--output stream-json` for NDJSON)
+Non-interactive print mode (no TUI):
 
-## Providers & credentials
-
-Set an environment key, or pass `--provider` + `--api-key` (and `--base-url`):
-
-| Provider | Env var | Default model |
-|---|---|---|
-| `anthropic` | `ANTHROPIC_API_KEY` | `claude-sonnet-4-20250514` |
-| `openai` | `OPENAI_API_KEY` | `gpt-4o-mini` |
-| `dashscope` | `DASHSCOPE_API_KEY` | `qwen-plus` |
-| `ollama` | (none — dummy key) | (pass `--model`) |
-
-`--provider ollama` reuses the OpenAI client against `http://localhost:11434`
-(Ollama needs no key, but the OpenAI client requires a non-empty one, so a dummy
-is used); point `--base-url` elsewhere for lmstudio/vllm.
-
-## Flags
-
-`--prompt` / `-p`, `--provider`, `--model`, `--api-key`, `--base-url`,
-`--permission` (default · accept_edits · explore · bypass · dont_ask),
-`--max-iters`, `--sandbox` (none · docker · e2b), `--output` (text · stream-json),
-`--resume <id>`, `--continue`.
-
-Print-mode permission default is `accept_edits`; TUI defaults to `default` (asks).
-
-## Configuration
-
-lathe reads (project `<cwd>/.lathe/` overrides user `~/.lathe/`):
-
-- **`settings.json`** — `hooks` (PreToolUse/PostToolUse/UserPromptSubmit/Stop)
-  and `statusLine` (`{ "type": "command", "command": "...", "padding": N }`).
-- **`config.toml`** — TOML config for provider/model/permission defaults
-  (flag > env > TOML > defaults). Override path with `--config`; `--config none`
-  skips TOML loading.
-- **`.mcp.json`** — MCP servers (`stdio` / `http`; `sse` unsupported).
-- **`skills/<name>/SKILL.md`** — instruction docs surfaced to the model.
-- **`CLAUDE.md` / `AGENTS.md`** — project memory injected into the system
-  prompt (walked cwd→repo-root, plus `~/.lathe/CLAUDE.md`).
-
-Example `~/.lathe/settings.json` with a status line:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "jq -r '\"\\(.model.id) · in=\\(.context_window.total_input_tokens) out=\\(.context_window.total_output_tokens)\"'"
-  }
-}
+```sh
+./lathe-engine -p "explain this repo" --output text         # or stream-json
 ```
 
-## Architecture
+## Config
 
-- `cmd/lathe` (cobra) resolves `config.Config`, then forks to the **TUI**
-  (`internal/tui`, bubbletea, alt-screen) or **print** (`internal/cli/print.go`
-  via `internal/render`).
-- Both call `agent.NewEngine(ctx, cfg)`; `Engine.Run(ctx, prompt)` returns an
-  `<-chan event.Event`.
-- **The turn loop** (`internal/agent/engine.go`) drives `model.ChatStream`
-  directly: per iteration — (optional) auto-compact → `ChatStream` →
-  `accumulate` → emit `TextDelta`/`Usage` → append assistant message → no tool
-  calls = `end_turn`, else `dispatch` + append results as a **user-role**
-  message (Anthropic requires `tool_result` in a user message) → repeat.
-- **Event stream** (`internal/event`) is the central seam between engine and
-  consumers — `render` (print) and `tui` are independent consumers; new
-  turn-level signals go here.
-- **Tools / permissions / hooks**: host builtins (`tool.NewEnhancedToolkit`) or
-  workspace-backed (`--sandbox`); each call is checked against the permission
-  engine; `settings.json` hooks fire at tool/turn boundaries.
-- **Extension points**: skills (`internal/skills`), MCP (`internal/mcpconfig`),
-  hooks (`internal/hooks` + `internal/settings`), Task subagent
-  (`internal/agent/task_tool.go`), sandbox (`internal/workspace`).
+`~/.lathe/config.toml` — all optional:
 
-## Project layout
+```toml
+provider   = "dashscope"
+model      = "qwen3-max"
+permission = "accept_edits"   # default|accept_edits|explore|bypass|dont_ask
 
-```
-cmd/lathe/         cobra entrypoint
-internal/agent/    turn engine, factory, dispatch, compress, task tool, sysprompt, memory
-internal/cli/      print mode
-internal/config/   flag > env > TOML > defaults resolution
-internal/event/    Event interface (engine → consumer seam)
-internal/hooks/    shell-command hook runner
-internal/mcpconfig/ .mcp.json parsing + MCP clients
-internal/render/   text + stream-json renderers
-internal/session/  JSONL transcripts, resume/continue
-internal/settings/ settings.json (hooks + statusLine)
-internal/skills/   SKILL.md discovery
-internal/statusline/ configurable TUI status line (M5b)
-internal/tui/      bubbletea TUI
-internal/workspace/ docker/e2b sandbox + workspace-backed tools
+# Rebrand the whole product without touching code — forks start here.
+[brand]
+name    = "myagent"
+tagline = "ships code, asks questions later"
+accent  = "#7C3AED"
+logo    = ["█▀▄▀█ █▄█", "█ ▀ █  █ "]
+theme   = "lathe-dark"
 ```
 
-## Conventions
+Themes are JSON files in `~/.lathe/themes/<name>.json` that override semantic
+color slots, the icon set, and motion flags; `[brand] accent` repaints the
+accent everywhere. `/theme <name>` switches live.
 
-- Code comments are tagged with milestone markers (`M2`, `M4c`, `M5a`, …) from
-  local design docs.
-- Config resolution order is **flag > env > TOML > defaults** (`internal/config`) —
-  wire new options through `config.Flags` / `config.Config` + `Load` rather than
-  reading env ad hoc.
-- New turn-level signals go in `internal/event`; new tools go through the
-  toolkit + permission engine (+ hook boundaries in `dispatch.go`).
+## TUI keys
 
-See [`CLAUDE.md`](CLAUDE.md) for the full agent-facing guide.
+- `enter` send · `tab` complete slash-commands and `@paths`
+- `pageup/pagedown` scroll · `ctrl+c` cancel the turn (twice to quit)
+- approvals: `y` once · `n` deny · `a` always
+- `/vim` — vim keybindings for the input (`esc`/`ctrl+g` → normal mode with
+  block cursor; `i a A I` back to insert)
 
-## License
+## Development
 
-MIT — see [LICENSE](LICENSE).
+```sh
+go test ./internal/...         # engine, hermetic (mock model)
+pnpm --filter @lathe/tui test:ui   # TUI interaction tests (bun)
+pnpm typecheck
+```
+
+Design rationale and the milestone plan live in
+[`docs/design/v2-redesign.md`](docs/design/v2-redesign.md).

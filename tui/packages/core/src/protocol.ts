@@ -70,6 +70,19 @@ export interface ApprovalRequest {
   tool_calls: ToolCallBlock[];
 }
 
+export interface ModelCardInfo {
+  name: string;
+  provider: string;
+  contextSize?: number;
+  thinking?: boolean;
+}
+
+export interface ModelListResult {
+  models: ModelCardInfo[];
+  provider: string;
+  current: string;
+}
+
 export interface ConfigSnapshot {
   provider: string;
   model: string;
