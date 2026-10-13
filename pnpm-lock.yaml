@@ -10,9 +10,15 @@ importers:
 
   tui/packages/cli:
     dependencies:
-      '@lathe/tui':
-        specifier: workspace:*
-        version: link:../tui
+      '@opentui/core':
+        specifier: ^0.6.1
+        version: 0.6.1(typescript@5.9.3)(web-tree-sitter@0.25.10)
+      '@opentui/react':
+        specifier: ^0.6.1
+        version: 0.6.1(react-devtools-core@7.0.1)(react@19.3.0)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.22.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.3.0
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

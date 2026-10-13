@@ -16,7 +16,8 @@ import (
 )
 
 // Version is the lathe version surfaced in --version and LCP initialize.
-const Version = "2.0.0-dev"
+// Release builds override it via -ldflags "-X .../config.Version=x.y.z".
+var Version = "2.0.0-dev"
 
 // Output is the print-mode output format.
 type Output string

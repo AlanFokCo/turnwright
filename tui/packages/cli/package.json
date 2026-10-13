@@ -1,9 +1,23 @@
 {
   "name": "@lathe/cli",
-  "version": "2.0.0-dev",
+  "version": "2.0.0-alpha.1",
+  "description": "lathe — a common coding agent (agentscope-go engine + OpenTUI client)",
   "type": "module",
   "bin": { "lathe": "./bin/lathe.js" },
+  "files": ["bin", "dist"],
+  "publishConfig": { "access": "public" },
   "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run" },
-  "dependencies": { "@lathe/tui": "workspace:*" },
-  "devDependencies": { "typescript": "^5.9.0", "@types/node": "^22.0.0", "vitest": "^3.0.0" }
+  "dependencies": {
+    "@opentui/core": "^0.6.1",
+    "@opentui/react": "^0.6.1",
+    "react": "^19.0.0"
+  },
+  "optionalDependencies": {
+    "@lathe/engine-darwin-amd64": "2.0.0-alpha.1",
+    "@lathe/engine-darwin-arm64": "2.0.0-alpha.1",
+    "@lathe/engine-linux-amd64": "2.0.0-alpha.1",
+    "@lathe/engine-linux-arm64": "2.0.0-alpha.1"
+  },
+  "devDependencies": { "typescript": "^5.9.0", "@types/node": "^22.0.0", "vitest": "^3.0.0" },
+  "engines": { "bun": ">=1.4" }
 }

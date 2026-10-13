@@ -20,14 +20,25 @@ the engine is testable without a terminal.
 
 ## Status
 
-Pre-release. v2 rebuild in progress:
+Pre-release (alpha). v2 rebuild:
 
 - **M0–M2** monorepo, LCP protocol, engine on agentscope-go `main`, TUI skeleton
 - **M3** feature parity: slash commands, `@file` expansion, `/model`,
   session picker, themes, diff view, vim mode, approvals
-- **M4/M5** (next) visual-quality sprint, npm distribution, CI
+- **M4** quality sprint — rubric 43/50 (see
+  [`docs/design/quality-rubric.md`](docs/design/quality-rubric.md)):
+  16ms stream batching, interleaved text/tool rendering, resize-safe layout,
+  NO_COLOR + 16-color fallbacks, splash-first startup
+- **M5** npm distribution (per-platform engine binaries), CI
 
-## Requirements
+## Install
+
+```sh
+npm i -g @lathe/cli        # engine arrives via per-platform optionalDependencies
+lathe                      # requires bun ≥1.4 on PATH (OpenTUI needs node:ffi)
+```
+
+## Requirements (from source)
 
 - **Go 1.25+** to build the engine
 - **Bun ≥ 1.4** to run the TUI from source (OpenTUI needs `node:ffi`; Node < 26
@@ -86,6 +97,12 @@ accent everywhere. `/theme <name>` switches live.
 go test ./internal/...         # engine, hermetic (mock model)
 pnpm --filter @lathe/tui test:ui   # TUI interaction tests (bun)
 pnpm typecheck
+```
+
+Release builds run on the release node (Linux x86_64):
+
+```sh
+bash scripts/build-dist.sh           # TUI bundle + engines for darwin/linux × amd64/arm64
 ```
 
 Design rationale and the milestone plan live in
