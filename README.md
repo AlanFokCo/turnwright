@@ -101,5 +101,5 @@ pnpm typecheck
 Release builds:
 
 ```sh
-bash scripts/build-dist.sh           # TUI bundle + engines for darwin/linux × amd64/arm64
+bash scripts/build-dist.sh           # TUI bundle + engines for darwin/linux × x64/arm64
 ```

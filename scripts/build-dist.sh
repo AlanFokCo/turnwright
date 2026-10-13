@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# build-dist.sh — build npm distribution artifacts. Runs on the release node
-# (Linux x86_64); Go cross-compiles, the TUI bundle is platform-independent.
+# build-dist.sh — build npm distribution artifacts. Go cross-compiles the
+# engine per platform; the TUI bundle is platform-independent.
 #
 # Usage: scripts/build-dist.sh [version]   (default: @turnwright/cli package.json)
 #
 # Output:
 #   tui/packages/cli/dist/tui.js          bundled TUI (externals: opentui, react)
 #   dist/npm/engine-<os>-<arch>/          per-platform engine packages
+#                                         (arch uses node names: x64, arm64)
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -29,8 +30,10 @@ bun build "$ROOT/tui/packages/tui/src/index.tsx" --target=bun \
 
 for p in $PLATFORMS; do
   os=${p%/*}; arch=${p#*/}
-  dir="$DIST/engine-$os-$arch"
-  echo "-- engine $os/$arch"
+  # npm cpu field + package names use node arch names (amd64 -> x64).
+  node_arch=$arch; [ "$arch" = "amd64" ] && node_arch=x64
+  dir="$DIST/engine-$os-$node_arch"
+  echo "-- engine $os/$node_arch"
   mkdir -p "$dir/bin"
   (cd "$ROOT" && GOOS=$os GOARCH=$arch go build -trimpath \
     -ldflags "-s -w -X github.com/alanfokco/turnwright/internal/config.Version=$VERSION" \
@@ -38,11 +41,11 @@ for p in $PLATFORMS; do
   chmod +x "$dir/bin/turnwright-engine"
   cat > "$dir/package.json" <<JSON
 {
-  "name": "@turnwright/engine-$os-$arch",
+  "name": "@turnwright/engine-$os-$node_arch",
   "version": "$VERSION",
-  "description": "turnwright engine binary ($os/$arch)",
+  "description": "turnwright engine binary ($os/$node_arch)",
   "os": ["$os"],
-  "cpu": ["$arch"],
+  "cpu": ["$node_arch"],
   "files": ["bin"],
   "publishConfig": { "access": "public" }
 }
