@@ -49,7 +49,7 @@ export function builtinTheme(name: string): Theme {
   return dark;
 }
 
-export function loadTheme(name: string, brand: Brand): Theme {
+export function loadTheme(name: string, brand: Brand, home: string = homedir()): Theme {
   // NO_COLOR (https://no-color.org): user asked for no color, honor it
   // unconditionally — hierarchy rides on weight and icons instead.
   if (process.env.NO_COLOR !== undefined) {
@@ -66,17 +66,20 @@ export function loadTheme(name: string, brand: Brand): Theme {
       motion: false,
     };
   }
-  const base = builtinTheme(name || brand.theme || "turnwright-dark");
-  const userPath = join(homedir(), ".turnwright", "themes", `${base.name}.json`);
-  let merged = base;
+  // The declared name picks both the builtin base (dark unless "turnwright-light")
+  // and the user override file — any name can carry its own <name>.json.
+  const declared = name || brand.theme || "turnwright-dark";
+  const base = builtinTheme(declared);
+  const userPath = join(home, ".turnwright", "themes", `${declared}.json`);
+  let merged: Theme = base.name === declared ? base : { ...base, name: declared };
   if (existsSync(userPath)) {
     try {
       const override = JSON.parse(readFileSync(userPath, "utf8"));
       merged = {
-        ...base,
-        colors: { ...base.colors, ...(override.colors ?? {}) },
-        icons: { ...base.icons, ...(override.icons ?? {}) },
-        motion: override.motion ?? base.motion,
+        ...merged,
+        colors: { ...merged.colors, ...(override.colors ?? {}) },
+        icons: { ...merged.icons, ...(override.icons ?? {}) },
+        motion: override.motion ?? merged.motion,
       };
     } catch {
       // malformed user theme: keep builtin, never crash the UI

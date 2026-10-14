@@ -16,7 +16,8 @@ turnwright is deliberately **two halves bolted together by a protocol**:
   touches engine internals.
 
 Because every capability crosses one JSON-RPC seam, the TUI is replaceable and
-the engine is testable without a terminal.
+the engine is testable without a terminal — see the
+[LCP protocol reference](docs/lcp-protocol.md).
 
 ## Status
 
@@ -37,15 +38,46 @@ npm i -g @turnwright/cli        # engine arrives via per-platform optionalDepend
 turnwright                      # requires bun ≥1.4 on PATH (OpenTUI needs node:ffi)
 ```
 
-## Requirements (from source)
+macOS and Linux (x64/arm64) are supported; Windows runs under WSL2 for now.
+Set one LLM credential (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+`DASHSCOPE_API_KEY`, …) or use `--provider ollama` for local models.
+Step by step: **[getting started](docs/getting-started.md)**.
 
-- **Go 1.25+** to build the engine
-- **Bun ≥ 1.4** to run the TUI from source (OpenTUI needs `node:ffi`; Node < 26
-  won't do)
-- One LLM credential, e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
-  `DASHSCOPE_API_KEY`, … or `--provider ollama`
+## Documentation
+
+| | |
+|---|---|
+| [Getting started](docs/getting-started.md) | Install, platforms, credentials, first run |
+| [CLI reference](docs/cli-reference.md) | Every flag and env var, launcher vs engine |
+| [Configuration](docs/configuration.md) | `config.toml`, precedence, providers & default models |
+| [TUI guide](docs/tui-guide.md) | Keys, slash commands, permission modes, `@file`, sessions, vim |
+| [Skills, MCP & project setup](docs/skills-and-mcp.md) | CLAUDE.md/AGENTS.md instructions, skills, `.mcp.json` |
+| [Print mode](docs/print-mode.md) | Non-interactive `-p`, stream-json, CI usage |
+| [Theming & branding](docs/theming-and-branding.md) | Theme overrides, `[brand]` rebranding for forks |
+| [LCP protocol](docs/lcp-protocol.md) | JSON-RPC seam — build your own client |
+
+Quick taste:
+
+```toml
+# ~/.turnwright/config.toml — all optional
+provider   = "dashscope"
+model      = "qwen3-max"
+permission = "accept_edits"
+
+[brand]                          # rebrand the whole product without touching code
+name    = "myagent"
+tagline = "ships code, asks questions later"
+accent  = "#7C3AED"
+theme   = "myagent-dark"         # ~/.turnwright/themes/myagent-dark.json
+```
+
+TUI keys in one line: `enter` send · `tab` complete · `ctrl+c` cancel the turn
+(when idle: quit) · approvals `y`/`n`/`a` — full list in the
+[TUI guide](docs/tui-guide.md).
 
 ## Run from source
+
+Requirements: Go 1.26+ (per `go.mod`), Bun ≥ 1.4, pnpm.
 
 ```sh
 go build -o turnwright-engine ./cmd/turnwright-engine   # engine lands at repo root
@@ -59,36 +91,6 @@ Non-interactive print mode (no TUI):
 ```sh
 ./turnwright-engine -p "explain this repo" --output text         # or stream-json
 ```
-
-## Config
-
-`~/.turnwright/config.toml` — all optional:
-
-```toml
-provider   = "dashscope"
-model      = "qwen3-max"
-permission = "accept_edits"   # default|accept_edits|explore|bypass|dont_ask
-
-# Rebrand the whole product without touching code — forks start here.
-[brand]
-name    = "myagent"
-tagline = "ships code, asks questions later"
-accent  = "#7C3AED"
-logo    = ["█▀▄▀█ █▄█", "█ ▀ █  █ "]
-theme   = "turnwright-dark"
-```
-
-Themes are JSON files in `~/.turnwright/themes/<name>.json` that override semantic
-color slots, the icon set, and motion flags; `[brand] accent` repaints the
-accent everywhere. `/theme <name>` switches live.
-
-## TUI keys
-
-- `enter` send · `tab` complete slash-commands and `@paths`
-- `pageup/pagedown` scroll · `ctrl+c` cancel the turn (twice to quit)
-- approvals: `y` once · `n` deny · `a` always
-- `/vim` — vim keybindings for the input (`esc`/`ctrl+g` → normal mode with
-  block cursor; `i a A I` back to insert)
 
 ## Development
 

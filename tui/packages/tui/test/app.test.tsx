@@ -15,7 +15,9 @@ const fakeInfo: InitializeResult = {
     name: "turnwright", tagline: "the coding turnwright — shape your code",
     accent: "#F59E0B", logo: ["TURNWRIGHT"], theme: "turnwright-dark",
   },
-  provider: "fake", model: "fake-model", cwd: process.cwd(),
+  // hermetic cwd: a real checkout would leak the host's git branch into the
+  // status line (long branch names wrap and break frame assertions)
+  provider: "fake", model: "fake-model", cwd: "/Users/dev/project",
   capabilities: {},
 };
 

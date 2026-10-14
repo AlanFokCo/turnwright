@@ -52,3 +52,8 @@ skills, MCP, sessions) — turnwright is a pure assembly layer plus a TypeScript
   `tui/packages/core/src/protocol.ts` together.
 - Theming/branding is data-driven (`[brand]` config + `~/.turnwright/themes/*.json`);
   do not hardcode colors in TS components — read from `Theme`.
+- User docs live in `docs/` (indexed from the root README). When changing CLI
+  flags, env vars, TOML keys, slash commands, or LCP methods, update the
+  matching `docs/` page in the same change — copied values carry
+  `<!-- src: file symbol -->` comments for grep-based drift checks. Example
+  commands in docs must have actually been run before being written down.
