@@ -1,0 +1,50 @@
+---
+interface Props { headings: { depth: number; text: string; slug: string }[]; }
+const { headings } = Astro.props;
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+{items.length > 0 && (
+  <nav class="toc" aria-label="On this page">
+    <p class="label">On this page</p>
+    <ul>
+      {items.map((h) => (
+        <li class={h.depth === 3 ? "d3" : undefined}>
+          <a href={`#${h.slug}`} data-toc={h.slug}>{h.text}</a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+)}
+
+<script>
+  const links = [...document.querySelectorAll<HTMLElement>("[data-toc]")];
+  const targets = links
+    .map((a) => document.getElementById(a.dataset.toc!))
+    .filter((el): el is HTMLElement => el !== null);
+  if (targets.length && "IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          links.forEach((l) => l.classList.remove("active"));
+          links.find((l) => l.dataset.toc === e.target.id)?.classList.add("active");
+        }
+      },
+      { rootMargin: "-10% 0px -80% 0px" },
+    );
+    targets.forEach((t) => io.observe(t));
+  }
+</script>
+
+<style>
+  .toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .toc a {
+    display: block; padding: 3px 10px; font-size: 12.5px; line-height: 1.45;
+    color: var(--muted); text-decoration: none; border-left: 2px solid var(--border);
+    transition: color 150ms var(--ease-machine), border-color 150ms var(--ease-machine);
+  }
+  .toc a:hover { color: var(--text); }
+  .toc a.active { color: var(--accent); border-left-color: var(--accent); }
+  .toc li.d3 a { padding-left: 22px; font-size: 12px; }
+  .toc .label { margin-bottom: calc(var(--space) * 1.5); }
+</style>

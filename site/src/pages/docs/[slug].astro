@@ -1,0 +1,39 @@
+---
+import { getCollection, render } from "astro:content";
+import { DOCS_ORDER, checkDocsCompleteness, firstH1 } from "@/lib/docsNav";
+import DocsLayout from "@/layouts/DocsLayout.astro";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("docs");
+  // build gate: docs/ and the nav contract must match exactly (Review Focus #1)
+  checkDocsCompleteness(entries.map((e) => `${e.id}.md`));
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const title = firstH1(entry.body ?? "");
+
+const all = await getCollection("docs");
+const navItems = DOCS_ORDER.map((slug) => {
+  const e = all.find((x) => x.id === slug);
+  if (!e) throw new Error(`nav item without entry: ${slug}`);
+  return { slug, title: firstH1(e.body ?? "") };
+});
+const idx = DOCS_ORDER.findIndex((s) => s === entry.id);
+const prev = idx > 0 ? navItems[idx - 1]! : null;
+const next = idx >= 0 && idx < navItems.length - 1 ? navItems[idx + 1]! : null;
+const editUrl = `https://github.com/AlanFokCo/turnwright/blob/main/docs/${entry.id}.md`;
+---
+
+<DocsLayout
+  title={`${title} · turnwright docs`}
+  slug={entry.id}
+  headings={headings}
+  editUrl={editUrl}
+  navItems={navItems}
+  prev={prev}
+  next={next}
+>
+  <Content />
+</DocsLayout>

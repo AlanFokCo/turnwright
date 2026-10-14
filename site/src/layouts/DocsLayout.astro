@@ -1,0 +1,142 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import DocsSidebar from "@/components/DocsSidebar.astro";
+import DocsToc from "@/components/DocsToc.astro";
+
+interface NavItem { slug: string; title: string }
+interface Props {
+  title: string;
+  slug: string;
+  headings: { depth: number; text: string; slug: string }[];
+  editUrl: string;
+  navItems: NavItem[];
+  prev: NavItem | null;
+  next: NavItem | null;
+}
+const { title, slug, headings, editUrl, navItems, prev, next } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title={title}>
+  <div class="docs-shell">
+    <details class="sidebar-mobile">
+      <summary class="label">Contents</summary>
+      <DocsSidebar items={navItems} slug={slug} />
+    </details>
+    <aside class="sidebar-desktop"><DocsSidebar items={navItems} slug={slug} /></aside>
+    <article class="docs-article">
+      <slot />
+      <nav class="pager" aria-label="Docs pagination">
+        {prev && (
+          <a class="pager-card" rel="prev" href={`${base}docs/${prev.slug}/`}>
+            <span class="label">← Previous</span>
+            <strong>{prev.title}</strong>
+          </a>
+        )}
+        {next && (
+          <a class="pager-card" rel="next" href={`${base}docs/${next.slug}/`}>
+            <span class="label">Next →</span>
+            <strong>{next.title}</strong>
+          </a>
+        )}
+      </nav>
+      <p class="edit"><a href={editUrl}>Edit this page on GitHub ↗</a></p>
+    </article>
+    <aside class="toc-desktop"><DocsToc headings={headings} /></aside>
+  </div>
+</BaseLayout>
+
+<style>
+  .docs-shell {
+    max-width: 1400px;
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr) 200px;
+    gap: calc(var(--space) * 8);
+    padding: calc(var(--space) * 10) var(--gutter);
+    align-items: start;
+  }
+  .sidebar-desktop, .toc-desktop { position: sticky; top: calc(var(--space) * 12); }
+  .sidebar-mobile { display: none; }
+  @media (max-width: 1199px) {
+    .docs-shell { grid-template-columns: minmax(0, 1fr); gap: calc(var(--space) * 4); }
+    .sidebar-desktop, .toc-desktop { display: none; }
+    .sidebar-mobile { display: block; }
+    .sidebar-mobile summary { cursor: pointer; padding: 8px 0; color: var(--muted); }
+    .sidebar-mobile[open] { padding-bottom: calc(var(--space) * 2); border-bottom: var(--hairline); }
+  }
+
+  /* Article typography (content is rendered markdown → :global) */
+  .docs-article { max-width: var(--measure); font-size: 15.5px; }
+  .docs-article :global(h1) { font-size: clamp(1.8rem, 3.6vw, 2.5rem); margin-bottom: calc(var(--space) * 3); }
+  .docs-article :global(h2) {
+    font-size: 1.3rem; margin-top: calc(var(--space) * 8); margin-bottom: calc(var(--space) * 3);
+    padding-top: calc(var(--space) * 3); border-top: var(--hairline);
+    scroll-margin-top: calc(var(--space) * 10);
+  }
+  .docs-article :global(h1 + h2), .docs-article :global(h1 + p + h2) { margin-top: calc(var(--space) * 4); }
+  .docs-article :global(h3) { font-size: 1.05rem; margin-top: calc(var(--space) * 5); margin-bottom: calc(var(--space) * 2); scroll-margin-top: calc(var(--space) * 10); }
+  .docs-article :global(h4) { font-family: var(--font-mono); font-size: 0.9rem; margin-top: calc(var(--space) * 4); margin-bottom: calc(var(--space) * 2); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .docs-article :global(p) { margin-bottom: calc(var(--space) * 2.5); }
+  .docs-article :global(ul), .docs-article :global(ol) { padding-left: 1.4em; margin-bottom: calc(var(--space) * 2.5); }
+  .docs-article :global(li) { margin-bottom: calc(var(--space) * 1); }
+  .docs-article :global(li::marker) { color: var(--muted); }
+  .docs-article :global(strong) { color: #fff; font-weight: 650; }
+  .docs-article :global(blockquote) {
+    margin: calc(var(--space) * 3) 0; padding: calc(var(--space) * 1.5) calc(var(--space) * 3);
+    border-left: 2px solid var(--accent); color: var(--muted); background: color-mix(in srgb, var(--surface) 50%, transparent);
+  }
+  .docs-article :global(blockquote p:last-child) { margin-bottom: 0; }
+  .docs-article :global(code:not(pre code)) {
+    font-size: 0.86em; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; padding: 1px 5px; color: #f3c969;
+  }
+  .docs-article :global(pre) {
+    background: var(--surface) !important; border: 1px solid var(--border); border-radius: 6px;
+    padding: calc(var(--space) * 2.5) calc(var(--space) * 3) !important;
+    font-size: 13px; line-height: 1.7; overflow-x: auto;
+    margin: calc(var(--space) * 3) 0;
+  }
+  .docs-article :global(pre.astro-code) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03); }
+  .docs-article :global(table) {
+    display: block; overflow-x: auto; width: 100%; border-collapse: collapse;
+    font-size: 13.5px; margin: calc(var(--space) * 3) 0;
+  }
+  .docs-article :global(th) {
+    text-align: left; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+  }
+  .docs-article :global(td) { padding: 8px 12px; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); vertical-align: top; }
+  .docs-article :global(tr:last-child td) { border-bottom: none; }
+  .docs-article :global(hr) { border: none; height: 1px; background: var(--border); margin: calc(var(--space) * 6) 0; }
+  .docs-article :global(a) { text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  .docs-article :global(a:hover) { text-decoration-color: var(--accent); }
+
+  /* src marginalia */
+  .docs-article :global(.src-note) {
+    font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--muted);
+    border-left: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    padding: 3px 10px; margin: calc(var(--space) * 1.5) 0; border-radius: 0 3px 3px 0;
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+  }
+  @media (min-width: 1400px) {
+    .docs-article :global(.src-note) { float: right; clear: right; width: 11.5rem; margin-right: -13.5rem; }
+  }
+
+  /* pager + edit */
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--space) * 2); margin-top: calc(var(--space) * 10); }
+  @media (max-width: 640px) { .pager { grid-template-columns: 1fr; } }
+  .pager-card {
+    display: flex; flex-direction: column; gap: 6px; padding: calc(var(--space) * 2.5);
+    border: 1px solid var(--border); border-radius: 6px; text-decoration: none;
+    background: var(--surface);
+    transition: border-color 150ms var(--ease-machine), transform 150ms var(--ease-machine);
+  }
+  .pager-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); transform: translateY(-2px); }
+  .pager-card strong { color: var(--text); font-size: 14.5px; font-weight: 600; }
+  .pager-card[rel="next"] { text-align: right; }
+  .edit { margin-top: calc(var(--space) * 4); font-size: 13px; }
+  .edit a { color: var(--muted); text-decoration: none; }
+  .edit a:hover { color: var(--accent); }
+</style>
