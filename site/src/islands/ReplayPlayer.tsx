@@ -11,15 +11,17 @@ interface Props {
   autoplay?: boolean;
   loop?: boolean;
   label: string;
+  /** Initial clock position so the first painted frame already has content. */
+  startT?: number;
 }
 
-export default function ReplayPlayer({ script, chapters, autoplay = false, loop = false, label }: Props) {
+export default function ReplayPlayer({ script, chapters, autoplay = false, loop = false, label, startT = 0 }: Props) {
   const last = script.length ? script[script.length - 1]!.t : 0;
   const reduced = useMemo(
     () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     [],
   );
-  const [t, setT] = useState(0);
+  const [t, setT] = useState(startT);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const raf = useRef(0);

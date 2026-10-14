@@ -3,21 +3,128 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ReplayStage from "../components/ReplayStage.astro";
 import PlaygroundStage from "../components/PlaygroundStage.astro";
 import RebrandDemo from "../islands/RebrandDemo.tsx";
+import SectionHead from "../components/SectionHead.astro";
+import ArchDiagram from "../components/ArchDiagram.astro";
+import SpecPlate from "../components/SpecPlate.astro";
+import InstallChip from "../components/InstallChip.astro";
+import Reveal from "../components/Reveal.astro";
+import DimensionRule from "../components/DimensionRule.astro";
+
+const base = import.meta.env.BASE_URL;
+
+const plates = [
+  { num: "01", title: "Nine providers", spec: "anthropic to ollama — one credential env var each; defaults per provider, base-URL override for proxies.", note: "±0 keys", href: `${base}docs/configuration/#providers--default-models` },
+  { num: "02", title: "Five permission modes", spec: "default, accept_edits, explore, bypass, dont_ask — from ask-everything to deny-everything-that-would-ask.", note: "y / n / a", href: `${base}docs/tui-guide/#permission-modes` },
+  { num: "03", title: "Skills & MCP", spec: "SKILL.md skills discovered from cwd to root; .mcp.json servers, stdio or http, failures skipped not fatal.", note: "cwd → /", href: `${base}docs/skills-and-mcp/` },
+  { num: "04", title: "Sessions & resume", spec: "every turn checkpointed per project; /sessions picker, --continue newest, --resume exact id.", note: "atomic writes", href: `${base}docs/tui-guide/#sessions` },
+  { num: "05", title: "Theming & branding", spec: "theme overrides for colors, icons, motion; [brand] renames and repaints the whole product.", note: "0 code changes", href: `${base}docs/theming-and-branding/` },
+  { num: "06", title: "Print mode / CI", spec: "-p one-shot turns as text or stream-json NDJSON; approvals auto-denied, exit codes you can gate on.", note: "exit 0|1", href: `${base}docs/print-mode/` },
+  { num: "07", title: "Vim & @file", spec: "normal/insert modes with real motions; @path attaches file contents, tab-completed, capped at 64KB.", note: "≤ 64 KB", href: `${base}docs/tui-guide/#file-references` },
+  { num: "08", title: "Replaceable client", spec: "the TUI is one LCP client among any: 13 methods, one NDJSON seam, versioned protocol.", note: "v1", href: `${base}docs/lcp-protocol/` },
+];
 ---
+
 <BaseLayout title="turnwright — shape your code at the lathe">
+  <!-- 1 · Hero (layout A · Split) -->
   <section class="section hero">
-    <div class="copy">
-      <p class="label">turnwright · precision code machinery</p>
-      <h1>Shape your code <span class="amp">at the lathe.</span></h1>
-      <p class="lede">Site under construction — scaffold task.</p>
+    <Reveal class="hero-copy">
+      <DimensionRule label="workpiece · steel · amber" />
+      <h1 class="hero-h1">Shape your code<br /><span class="amp">at the lathe.</span></h1>
+      <p class="lede">
+        A coding agent for the terminal. The loop, tools, permissions, sessions,
+        skills and compression all come from
+        <a href="https://github.com/agentscope-ai/agentscope-go">agentscope-go</a>;
+        turnwright wires them to one JSON-RPC seam and a TypeScript TUI.
+      </p>
+      <div class="cta-row">
+        <InstallChip />
+        <a class="ghost" href="#watch">watch it work ↓</a>
+      </div>
+      <p class="hero-meta label">darwin · linux — x64 / arm64 · windows via wsl2</p>
+    </Reveal>
+    <Reveal index={1} class="hero-stage">
+      <ReplayStage variant="hero" />
+    </Reveal>
+  </section>
+
+  <!-- 01 · Watch a real turn -->
+  <section class="section" id="watch">
+    <SectionHead num="01" label="the workpiece, turning" title="Watch a real turn"
+      lede="A representative session in the real event vocabulary: streaming text, tool calls, an approval answered with y, a patch, a theme switch. Scrub it, chapter it, run it at 2×." />
+    <Reveal>
+      <ReplayStage variant="full" />
+    </Reveal>
+  </section>
+
+  <!-- 02 · Try it yourself -->
+  <section class="section">
+    <SectionHead num="02" label="hands on the controls" title="Try it yourself"
+      lede="A faithful fake terminal — same commands, same warnings, same approval dialog. Nothing leaves your browser." />
+    <Reveal>
+      <PlaygroundStage />
+    </Reveal>
+  </section>
+
+  <!-- 03 · Two halves, one seam -->
+  <section class="section">
+    <SectionHead num="03" label="assembly drawing" title="Two halves, one seam"
+      lede="The engine never renders; the TUI never decides. Everything crosses LCP — which is why the TUI is replaceable and the engine is testable without a terminal." />
+    <Reveal>
+      <ArchDiagram />
+    </Reveal>
+  </section>
+
+  <!-- 04 · Spec sheet -->
+  <section class="section">
+    <SectionHead num="04" label="data plate" title="Spec sheet"
+      lede="Eight machined plates. Each one links into the documentation that proves it." />
+    <div class="plates">
+      {plates.map((p, i) => (
+        <Reveal index={i % 4}>
+          <SpecPlate num={p.num} title={p.title} spec={p.spec} note={p.note} href={p.href} />
+        </Reveal>
+      ))}
     </div>
-    <ReplayStage variant="hero" />
   </section>
+
+  <!-- 05 · Make it yours -->
   <section class="section">
-    <PlaygroundStage />
+    <SectionHead num="05" label="rebrand without a rebuild" title="Make it yours"
+      lede="Branding is data. Rename it, repaint it, ship your fork — the config below is the entire change." />
+    <Reveal>
+      <RebrandDemo client:visible />
+    </Reveal>
   </section>
-  <section class="section">
-    <RebrandDemo client:visible />
+
+  <!-- 06 · Install -->
+  <section class="section install">
+    <SectionHead num="06" label="off the machine, into yours" title="Install" />
+    <div class="install-grid">
+      <Reveal class="install-card">
+        <p class="label">npm</p>
+        <pre><code>npm i -g @turnwright/cli
+turnwright</code></pre>
+        <p class="hint">per-platform engine via optionalDependencies · bun ≥ 1.4 on PATH</p>
+      </Reveal>
+      <Reveal index={1} class="install-card">
+        <p class="label">source</p>
+        <pre><code>go build -o turnwright-engine ./cmd/turnwright-engine
+pnpm install && pnpm dev</code></pre>
+        <p class="hint">Go 1.26+ (per go.mod) · Bun ≥ 1.4 · pnpm</p>
+      </Reveal>
+      <Reveal index={2} class="install-card">
+        <p class="label">credentials</p>
+        <pre><code>export ANTHROPIC_API_KEY=…
+# or --provider ollama, no key</code></pre>
+        <p class="hint">seven provider env vars auto-detected · <a href={`${base}docs/getting-started/#credentials`}>list</a></p>
+      </Reveal>
+    </div>
+    <div class="docs-cta">
+      <DimensionRule label="further reading" />
+      <p>
+        <a href={`${base}docs/`}>All documentation →</a>
+      </p>
+    </div>
   </section>
 </BaseLayout>
 
@@ -25,9 +132,48 @@ import RebrandDemo from "../islands/RebrandDemo.tsx";
   .hero {
     display: grid; grid-template-columns: 1.05fr 1fr;
     gap: calc(var(--space) * 8); align-items: center;
-    min-height: 60vh;
+    min-height: 64vh;
   }
-  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
-  .amp { color: var(--accent); }
-  .lede { color: var(--muted-text); }
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; min-height: 0; gap: calc(var(--space) * 5); }
+  }
+  .hero-h1 {
+    margin: calc(var(--space) * 3) 0;
+    font-size: clamp(2.1rem, 4.2vw, 3.2rem);
+    text-wrap: balance;
+  }
+  .amp { color: var(--accent); text-shadow: 0 0 24px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .lede { color: var(--muted-text); font-size: 16px; max-width: 46ch; }
+  .lede a { color: var(--text); text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .cta-row { display: flex; align-items: center; gap: calc(var(--space) * 3); margin-top: calc(var(--space) * 4); flex-wrap: wrap; }
+  .ghost {
+    font-family: var(--font-mono); font-size: 13px; color: var(--muted-text);
+    text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 2px;
+    transition: color 150ms var(--ease-machine), border-color 150ms var(--ease-machine);
+  }
+  .ghost:hover { color: var(--accent); border-color: var(--accent); }
+  .hero-meta { margin-top: calc(var(--space) * 4); }
+
+  .plates {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: calc(var(--space) * 2);
+  }
+  .plates :global(.reveal) { height: 100%; }
+  .plates :global(.plate) { height: 100%; }
+
+  .install-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: calc(var(--space) * 2); }
+  .install-card {
+    border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+    padding: calc(var(--space) * 3);
+  }
+  .install-card pre {
+    margin: calc(var(--space) * 1.5) 0; padding: calc(var(--space) * 2);
+    background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+    border: 1px solid var(--border); border-radius: 4px;
+    font-size: 12.5px; line-height: 1.7; overflow-x: auto;
+  }
+  .install-card .hint { font-size: 12px; color: var(--muted); margin: 0; }
+  .install-card .hint a { color: var(--muted-text); }
+  .docs-cta { margin-top: calc(var(--space) * 8); }
+  .docs-cta p { margin-top: calc(var(--space) * 3); font-size: 15px; }
 </style>

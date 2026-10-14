@@ -6,15 +6,20 @@ test("rebrand demo: inputs repaint the preview and update the TOML", async ({ pa
   await demo.scrollIntoViewIfNeeded();
   await demo.getByLabel("Accent hex value").waitFor(); // hydrated
 
-  await demo.getByLabel("Accent hex value", { exact: true }).fill("#12B886");
+  const hex = demo.getByLabel("Accent hex value", { exact: true });
+  await hex.click({ clickCount: 3 });
+  await hex.pressSequentially("#12B886", { delay: 15 });
   const mini = demo.locator(".mini-status .mini-brand");
   await expect(mini).toHaveCSS("color", "rgb(18, 184, 134)");
 
-  await demo.locator("input").first().fill("lathebot");
+  const nameInput = demo.locator("input").first();
+  await nameInput.click({ clickCount: 3 });
+  await nameInput.pressSequentially("lathebot", { delay: 15 });
   await expect(mini).toHaveText("lathebot");
   await expect(demo.locator("pre")).toContainText('name    = "lathebot"');
   await expect(demo.locator("pre")).toContainText('accent  = "#12B886"');
 
-  await demo.getByLabel("Accent hex value", { exact: true }).fill("nothex");
+  await hex.click({ clickCount: 3 });
+  await hex.pressSequentially("nothex", { delay: 15 });
   await expect(demo).toContainText("not a hex color");
 });

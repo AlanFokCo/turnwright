@@ -10,11 +10,21 @@ const HINTS = ["/help", "/status", "/theme turnwright-light", "run tests", "what
 /** Interactive fake terminal: canned responses shaped exactly like the real
  *  product's events, including approval prompts and its unknown-command
  *  warning. No backend, no network. */
+/** Prime the terminal with a /help exchange so the first paint is alive. */
+function primedState() {
+  let s = initialRenderState();
+  s = applyEvent(s, { type: "user_message", text: "/help" });
+  for (const ev of playgroundRespond("/help", initialPlaygroundState()).events) {
+    s = applyEvent(s, ev);
+  }
+  return s;
+}
+
 export default function Playground() {
-  const [st, setSt] = useState(initialRenderState);
+  const [st, setSt] = useState(primedState);
   const [pg, setPg] = useState<PlaygroundState>(initialPlaygroundState);
   const [input, setInput] = useState("");
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<string[]>(["/help"]);
   const [histIdx, setHistIdx] = useState<number | null>(null);
   const queue = useRef<AgentEventLike[]>([]);
   const reduced =

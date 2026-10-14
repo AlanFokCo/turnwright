@@ -1,0 +1,25 @@
+---
+import DimensionRule from "./DimensionRule.astro";
+import Reveal from "./Reveal.astro";
+
+interface Props { num: string; label: string; title: string; lede?: string; }
+const { num, label, title, lede } = Astro.props;
+---
+<Reveal class="section-head">
+  <div class="head-row">
+    <span class="num">{num}</span>
+    <DimensionRule label={label} />
+  </div>
+  <h2>{title}</h2>
+  {lede && <p class="lede">{lede}</p>}
+</Reveal>
+
+<style>
+  .section-head { margin-bottom: calc(var(--space) * 6); }
+  .head-row { display: flex; align-items: center; gap: calc(var(--space) * 2); margin-bottom: calc(var(--space) * 3); }
+  .num {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--accent); letter-spacing: 0.1em;
+  }
+  .lede { color: var(--muted-text); max-width: 62ch; margin: calc(var(--space) * 2) 0 0; font-size: 15.5px; }
+</style>

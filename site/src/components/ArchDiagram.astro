@@ -1,0 +1,87 @@
+---
+/** Engineering-drawing diagram: agentscope-go foundation, engine ⇄ LCP  TUI.
+ *  Strokes draw in on reveal (Reveal adds .in); reduced-motion → static. */
+const base = import.meta.env.BASE_URL;
+---
+<figure class="arch">
+  <svg viewBox="0 0 960 420" role="img" aria-labelledby="arch-title arch-desc">
+    <title id="arch-title">turnwright architecture</title>
+    <desc id="arch-desc">A Go engine assembled on agentscope-go speaks LCP, a JSON-RPC 2.0 NDJSON protocol over stdio, to a replaceable TypeScript TUI.</desc>
+
+    <!-- foundation -->
+    <g class="draw">
+      <rect x="60" y="330" width="840" height="56" rx="3" />
+    </g>
+    <text x="480" y="364" class="t-center t-foundation">agentscope-go — agent loop · tools · permissions · sessions · skills · MCP · compression</text>
+
+    <!-- engine plate -->
+    <g class="draw">
+      <rect x="80" y="150" width="300" height="120" rx="3" />
+    </g>
+    <text x="230" y="192" class="t-center t-plate">turnwright-engine</text>
+    <text x="230" y="216" class="t-center t-sub">Go · assembly layer</text>
+    <text x="230" y="240" class="t-center t-sub">serve (LCP) · -p (print)</text>
+
+    <!-- tui plate -->
+    <g class="draw">
+      <rect x="580" y="150" width="300" height="120" rx="3" />
+    </g>
+    <text x="730" y="192" class="t-center t-plate">turnwright TUI</text>
+    <text x="730" y="216" class="t-center t-sub">TypeScript · OpenTUI + React</text>
+    <text x="730" y="240" class="t-center t-sub">replaceable client</text>
+
+    <!-- seam: dimension line between the two plates -->
+    <g class="draw seam">
+      <line x1="380" y1="210" x2="580" y2="210" />
+      <line x1="380" y1="196" x2="380" y2="224" />
+      <line x1="580" y1="196" x2="580" y2="224" />
+    </g>
+    <text x="480" y="188" class="t-center t-seam">LCP</text>
+    <text x="480" y="238" class="t-center t-sub">JSON-RPC 2.0 · NDJSON · stdio</text>
+
+    <!-- mount lines to foundation -->
+    <g class="draw faint">
+      <line x1="230" y1="270" x2="230" y2="330" />
+      <line x1="730" y1="270" x2="730" y2="330" />
+    </g>
+
+    <!-- callouts -->
+    <g class="t-sub">
+      <text x="80" y="120">approvals ⇄ approval/request</text>
+      <text x="700" y="120">agent/event · 1:1 forwarding</text>
+    </g>
+    <g class="draw faint">
+      <line x1="150" y1="128" x2="150" y2="150" />
+      <line x1="810" y1="128" x2="810" y2="150" />
+    </g>
+  </svg>
+  <figcaption class="label">
+    every capability crosses one seam — <a href={`${base}docs/lcp-protocol/`}>protocol reference</a> ·
+    <a href={`${base}docs/getting-started/`}>getting started</a>
+  </figcaption>
+</figure>
+
+<style>
+  .arch { margin: 0; }
+  .arch svg { width: 100%; height: auto; display: block; }
+  .draw rect, .draw line {
+    fill: none; stroke: var(--border); stroke-width: 1.2;
+    stroke-dasharray: 2400; stroke-dashoffset: 2400;
+    transition: stroke-dashoffset 900ms var(--ease-machine);
+  }
+  :global(.reveal.in) .draw rect, :global(.reveal.in) .draw line { stroke-dashoffset: 0; }
+  .draw.seam line { stroke: var(--accent); }
+  .draw.faint line { stroke: color-mix(in srgb, var(--border) 70%, transparent); }
+  @media (prefers-reduced-motion: reduce) {
+    .draw rect, .draw line { stroke-dashoffset: 0; transition: none; }
+  }
+  text { font-family: var(--font-mono); }
+  .t-center { text-anchor: middle; }
+  .t-plate { fill: var(--text); font-size: 17px; font-weight: 700; }
+  .t-sub { fill: var(--muted-text); font-size: 11.5px; }
+  .t-foundation { fill: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+  .t-seam { fill: var(--accent); font-size: 15px; font-weight: 700; letter-spacing: 0.18em; }
+  figcaption { margin-top: calc(var(--space) * 3); text-align: center; }
+  figcaption a { color: var(--muted-text); }
+  figcaption a:hover { color: var(--accent); }
+</style>

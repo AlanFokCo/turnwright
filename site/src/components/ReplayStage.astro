@@ -33,7 +33,7 @@ function posterLine(e: Entry): string {
     <p class="js-note">JS required to play</p>
   </div>
   {variant === "hero" ? (
-    <ReplayPlayer client:visible script={script} autoplay loop label="turnwright session — highlight replay" />
+    <ReplayPlayer client:visible script={script} autoplay loop startT={2400} label="turnwright session — highlight replay" />
   ) : (
     <ReplayPlayer client:visible script={script} chapters={CHAPTERS} label="turnwright session — full replay" />
   )}

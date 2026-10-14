@@ -1,0 +1,33 @@
+---
+interface Props { num: string; title: string; spec: string; note: string; href: string; }
+const { num, title, spec, note, href } = Astro.props;
+---
+<a class="plate" href={href}>
+  <div class="plate-top">
+    <span class="num">{num}</span>
+    <span class="note">{note}</span>
+  </div>
+  <h3>{title}</h3>
+  <p>{spec}</p>
+</a>
+
+<style>
+  .plate {
+    display: flex; flex-direction: column; gap: 6px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface);
+    padding: calc(var(--space) * 3);
+    text-decoration: none; color: inherit;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    transition: border-color 180ms var(--ease-machine), transform 180ms var(--ease-machine);
+  }
+  .plate:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    transform: translateY(-2px);
+  }
+  .plate-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .num { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent); }
+  .note { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.06em; white-space: nowrap; }
+  h3 { font-size: 15.5px; letter-spacing: -0.01em; }
+  p { margin: 0; font-size: 13px; color: var(--muted-text); line-height: 1.6; }
+</style>
