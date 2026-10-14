@@ -1,10 +1,25 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ReplayStage from "../components/ReplayStage.astro";
 ---
 <BaseLayout title="turnwright — shape your code at the lathe">
-  <section class="section">
-    <p class="label">turnwright · precision code machinery</p>
-    <h1>Shape your code <span style="color: var(--accent)">at the lathe.</span></h1>
-    <p style="color: var(--muted)">Site under construction — scaffold task.</p>
+  <section class="section hero">
+    <div class="copy">
+      <p class="label">turnwright · precision code machinery</p>
+      <h1>Shape your code <span class="amp">at the lathe.</span></h1>
+      <p class="lede">Site under construction — scaffold task.</p>
+    </div>
+    <ReplayStage variant="hero" />
   </section>
 </BaseLayout>
+
+<style>
+  .hero {
+    display: grid; grid-template-columns: 1.05fr 1fr;
+    gap: calc(var(--space) * 8); align-items: center;
+    min-height: 60vh;
+  }
+  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+  .amp { color: var(--accent); }
+  .lede { color: var(--muted-text); }
+</style>

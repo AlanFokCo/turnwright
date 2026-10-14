@@ -1,0 +1,44 @@
+---
+/** Terminal replay stage: server-rendered poster (JS-off & pre-hydration)
+ *  plus the hydrated island. variant "hero" loops the highlight cut;
+ *  "full" plays the chaptered canonical session. */
+import ReplayPlayer from "@/islands/ReplayPlayer.tsx";
+import { stateAt, type Entry } from "@/replay/engine";
+import highlight from "@/replay/highlight.json";
+import canonical from "@/replay/canonical.json";
+import { CHAPTERS } from "@/replay/chapters";
+import type { TimedEvent } from "@/replay/events";
+
+interface Props { variant: "hero" | "full"; }
+const { variant } = Astro.props;
+const script = (variant === "hero" ? highlight : canonical) as TimedEvent[];
+const posterState = stateAt(script, 4200);
+
+function posterLine(e: Entry): string {
+  switch (e.kind) {
+    case "user": return `❯ ${e.text}`;
+    case "thinking": return `✶ ${e.text}`;
+    case "text": return `◆ ${e.text}`;
+    case "tool": return `${e.state === "done" ? "✓" : "●"} ${e.name}`;
+    case "approval": return `? permission required: ${e.toolCalls.map((t) => t.name).join(", ")}`;
+    case "notice": return `• ${e.text}`;
+  }
+}
+---
+<div class="player-wrap" data-player-wrap>
+  <div class="player-static" aria-hidden="false">
+    {posterState.entries.map((e) => (
+      <div class={e.kind === "user" ? "entry-user" : undefined}>{posterLine(e)}</div>
+    ))}
+    <p class="js-note">JS required to play</p>
+  </div>
+  {variant === "hero" ? (
+    <ReplayPlayer client:visible script={script} autoplay loop label="turnwright session — highlight replay" />
+  ) : (
+    <ReplayPlayer client:visible script={script} chapters={CHAPTERS} label="turnwright session — full replay" />
+  )}
+</div>
+
+<style>
+  .player-wrap :global(.player) { width: 100%; }
+</style>
