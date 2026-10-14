@@ -1,11 +1,15 @@
 ---
+/** Interactive playground stage. The SSR'd terminal frame is the JS-off
+ *  visual; a <noscript> chip explains the missing interactivity. */
 import Playground from "@/islands/Playground.tsx";
 ---
 <div class="player-wrap" data-player-wrap>
-  <div class="player-static">
-    <div class="entry-user"><span style="color: var(--accent)">❯</span> /help</div>
-    <div style="color: var(--muted-text)">/model [name] — switch model<br />/theme [name] — switch theme<br />/permission &lt;mode&gt; — set permission mode</div>
-    <p class="js-note">JS required to play</p>
-  </div>
   <Playground client:visible />
+  <noscript>
+    <p class="js-note">JS required to play — the interactive terminal needs scripting</p>
+  </noscript>
 </div>
+
+<style>
+  .player-wrap :global(.term), .player-wrap :global(astro-island) { width: 100%; }
+</style>

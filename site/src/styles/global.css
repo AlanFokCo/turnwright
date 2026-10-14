@@ -211,21 +211,18 @@ pre.astro-code span[style*="#6a737d" i] { color: #9198a1 !important; }
 }
 .term-input input::placeholder { color: color-mix(in srgb, var(--p-muted) 70%, transparent); }
 
-/* Poster (JS-off / pre-hydration): same shell metrics as the live player,
-   stacked in the same grid cell so hydration never shifts layout. */
+/* JS-off / pre-hydration: Astro SSRs the island's first frame (the visual);
+   a <noscript> chip stacked in the same grid cell explains the stillness.
+   astro-island is display:contents — its .player/.term become grid items. */
 .player-wrap { display: grid; }
 .player-wrap > * { grid-area: 1 / 1; min-width: 0; }
-/* astro-island is display:contents — its .player becomes the grid item */
 .player-wrap .player, .player-wrap .term { grid-area: 1 / 1; min-width: 0; width: 100%; }
-.player-wrap[data-hydrated="true"] .player-static { visibility: hidden; }
-.player-static {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-  font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--text);
-  overflow: hidden;
+/* no pointer-events:none — with JS off there is nothing to click through to,
+   and hit-testing is how the e2e proves the chip is unoccluded */
+.player-wrap noscript { grid-area: 1 / 1; display: flex; align-items: flex-end; justify-content: center; }
+.js-note {
+  margin: 0 0 calc(var(--space) * 7);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted-text); background: var(--bg); border: 1px solid var(--border);
+  border-radius: 2px; padding: 6px 12px;
 }
-.player-static .fake-controls { display: flex; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); }
-.player-static .fake-btn {
-  width: 44px; height: 32px; border: 1px solid var(--border); border-radius: 3px;
-}
-.player-static .entry-user .p { color: var(--accent); }
-.player-static .js-note { margin: 12px 0 0; font-size: 11px; color: var(--muted-text); letter-spacing: 0.1em; text-transform: uppercase; }

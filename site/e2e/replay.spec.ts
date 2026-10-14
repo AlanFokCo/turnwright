@@ -1,13 +1,30 @@
 import { expect, test } from "@playwright/test";
 
-test("JS disabled: poster frame communicates the product", async ({ browser }) => {
+test("JS disabled: settled state shows the SSR frame plus an explanation", async ({ browser }) => {
   const ctx = await browser.newContext({ javaScriptEnabled: false });
   const page = await ctx.newPage();
   await page.goto("/turnwright/");
-  const poster = page.locator(".player-static").first();
-  await expect(poster).toBeVisible();
-  await expect(poster).toContainText("turnwright");
-  await expect(poster).toContainText("JS required to play");
+  await page.waitForTimeout(2000); // settled: hydration cannot occur
+  // the server-rendered player frame is the JS-off visual…
+  const frame = page.locator(".hero-stage .player").first();
+  await expect(frame).toBeVisible();
+  await expect(frame).toContainText("turnwright session");
+  // …and every stage explains why nothing moves
+  const notes = page.locator(".js-note");
+  expect(await notes.count()).toBeGreaterThanOrEqual(2);
+  for (const note of await notes.all()) {
+    await expect(note).toBeVisible();
+    await expect(note).toContainText("JS required to play");
+  }
+  // …unoccluded: the note must be the topmost element at its own center
+  const topmost = await page.evaluate(() => {
+    const note = document.querySelector(".hero-stage .js-note");
+    if (!note) return "missing";
+    const r = note.getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return note === el || note.contains(el) ? "note" : `occluded-by:${el?.className ?? "unknown"}`;
+  });
+  expect(topmost).toBe("note");
   await ctx.close();
 });
 
