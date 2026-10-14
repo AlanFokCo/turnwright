@@ -4,3 +4,4 @@ packages:
 
 allowBuilds:
   esbuild: true
+  sharp: true # astro's optional image dependency; same class as the esbuild fix (ERR_PNPM_IGNORED_BUILDS)
