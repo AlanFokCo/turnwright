@@ -54,3 +54,4 @@ docs/design/
 # site
 site/dist/
 .astro/
+site/.qa/

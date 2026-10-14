@@ -24,6 +24,8 @@ skills, MCP, sessions) — turnwright is a pure assembly layer plus a TypeScript
 - `tui/packages/core` — LCP client (`EngineClient`).
 - `tui/packages/tui` — OpenTUI + React app (theme system, store, components).
 - `tui/packages/cli` — npm launcher (`bin/turnwright.js`).
+- `site/` — Astro GitHub Pages site (marketing + docs reader); reads
+  `docs/*.md` as its content source, deployed by `.github/workflows/site.yml`.
 
 ## Hard rules
 
