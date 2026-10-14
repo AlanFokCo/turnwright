@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ReplayStage from "../components/ReplayStage.astro";
+import PlaygroundStage from "../components/PlaygroundStage.astro";
 ---
 <BaseLayout title="turnwright — shape your code at the lathe">
   <section class="section hero">
@@ -10,6 +11,9 @@ import ReplayStage from "../components/ReplayStage.astro";
       <p class="lede">Site under construction — scaffold task.</p>
     </div>
     <ReplayStage variant="hero" />
+  </section>
+  <section class="section">
+    <PlaygroundStage />
   </section>
 </BaseLayout>
 

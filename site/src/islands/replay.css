@@ -105,6 +105,34 @@
 .chapters { display: flex; gap: 4px; flex-wrap: wrap; }
 .chapters button.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--p-border)); }
 
+/* Playground specifics */
+.term-body { min-height: 200px; max-height: 340px; }
+.approval-actions { display: flex; gap: 8px; margin: 8px 0 4px; }
+.approval-actions button {
+  font-family: var(--font-mono); font-size: 12px; cursor: pointer;
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  border-radius: 3px; padding: 5px 10px; min-height: 32px;
+  transition: background 150ms var(--ease-machine);
+}
+.approval-actions button:hover { background: color-mix(in srgb, var(--warn) 20%, transparent); }
+.hints { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px; border-top: 1px solid var(--p-border); }
+.hints button {
+  font-family: var(--font-mono); font-size: 11px; cursor: pointer;
+  color: var(--p-muted); background: transparent;
+  border: 1px solid var(--p-border); border-radius: 2px; padding: 4px 8px; min-height: 28px;
+  transition: color 150ms var(--ease-machine), border-color 150ms var(--ease-machine);
+}
+.hints button:hover { color: var(--p-text); border-color: color-mix(in srgb, var(--accent) 50%, var(--p-border)); }
+.term-input { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--p-border); }
+.term-input .p { color: var(--accent); }
+.term-input input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: var(--font-mono); font-size: 13px; color: var(--p-text);
+  min-height: 32px;
+}
+.term-input input::placeholder { color: color-mix(in srgb, var(--p-muted) 70%, transparent); }
+
 /* Poster (JS-off / pre-hydration) */
 .player-wrap { position: relative; }
 .player-wrap .player-static {
