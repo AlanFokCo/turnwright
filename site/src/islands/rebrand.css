@@ -1,0 +1,61 @@
+.rebrand {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  grid-template-areas: "form preview" "toml preview";
+  gap: calc(var(--space) * 4);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .rebrand { grid-template-columns: 1fr; grid-template-areas: "form" "preview" "toml"; }
+}
+.rebrand-form { grid-area: form; display: flex; flex-direction: column; gap: calc(var(--space) * 2.5); }
+.rebrand-form label { display: flex; flex-direction: column; gap: 6px; }
+.rebrand-form .label { font-size: 10px; }
+.rebrand-form input {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 3px;
+  color: var(--text); font-family: var(--font-mono); font-size: 13px;
+  padding: 9px 12px; min-height: 40px; outline: none;
+  transition: border-color 150ms var(--ease-machine);
+}
+.rebrand-form input:focus { border-color: var(--demo-accent, var(--accent)); }
+.accent-row { display: flex; gap: 8px; }
+.accent-row input[type="color"] { width: 52px; padding: 4px; cursor: pointer; }
+.accent-row .hex { flex: 1; }
+.invalid { color: var(--danger); font-size: 11.5px; font-family: var(--font-mono); }
+
+.rebrand-preview {
+  grid-area: preview;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  background: var(--surface);
+  display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 260px;
+  transition: border-color 200ms var(--ease-machine);
+}
+.mini-hero { padding: calc(var(--space) * 5) calc(var(--space) * 4); display: flex; flex-direction: column; gap: 8px; }
+.mini-mark { font-family: var(--font-mono); color: var(--demo-accent); font-size: 18px; font-weight: 700; }
+.mini-name {
+  font-family: var(--font-mono); font-size: clamp(1.4rem, 3vw, 2rem); letter-spacing: -0.02em;
+  color: var(--text);
+}
+.mini-tagline { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted-text); }
+.mini-status {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  padding: 8px 14px; border-top: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 11px; color: var(--muted-text);
+  background: color-mix(in srgb, var(--surface) 70%, #000 6%);
+}
+.mini-status .mini-brand { color: var(--demo-accent); font-weight: 700; }
+
+.rebrand-toml { grid-area: toml; }
+.toml-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.toml-head button {
+  font-family: var(--font-mono); font-size: 11px; cursor: pointer; min-height: 30px;
+  background: transparent; color: var(--muted-text);
+  border: 1px solid var(--border); border-radius: 2px; padding: 4px 10px;
+}
+.toml-head button:hover { color: var(--text); border-color: var(--demo-accent, var(--accent)); }
+.rebrand-toml pre {
+  margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: calc(var(--space) * 2.5); font-size: 12.5px; line-height: 1.7; color: var(--text);
+  overflow-x: auto;
+}
