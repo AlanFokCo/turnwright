@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 import { isValidHex, renderBrandToml } from "../rebrand/toml";
 import "./rebrand.css";
 
+/** Initial state = the real product brand: the demo starts from what ships
+ *  and shows your fork diverging from it (also keeps the default AA-safe). */
 const DEFAULTS = {
-  name: "myagent",
-  tagline: "ships code, asks questions later",
-  accent: "#7C3AED",
-  theme: "myagent-dark",
+  name: "turnwright",
+  tagline: "shape your code at the lathe",
+  accent: "#F59E0B",
+  theme: "turnwright-dark",
 };
 
 /** Live proof that branding is data: edit [brand] fields and watch a mini

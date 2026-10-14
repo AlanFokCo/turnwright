@@ -3,7 +3,6 @@ import { stateAt, type RenderState } from "../replay/engine";
 import type { TimedEvent } from "../replay/events";
 import type { Chapter } from "../replay/chapters";
 import { EntryView } from "./EntryView";
-import "./replay.css";
 
 interface Props {
   script: TimedEvent[];
@@ -59,6 +58,13 @@ export default function ReplayPlayer({ script, chapters, autoplay = false, loop 
   }, [playing, speed, last, loop]);
 
   const state: RenderState = useMemo(() => stateAt(script, t), [script, t]);
+
+  // terminals scroll, they don't grow: pin the body to the newest entry
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [state.entries.length]);
   const light = state.entries.some(
     (e) => e.kind === "notice" && e.tone === "info" && e.text.startsWith("theme → turnwright-light"),
   );
@@ -82,7 +88,7 @@ export default function ReplayPlayer({ script, chapters, autoplay = false, loop 
         <span className="chrome-title">{label}</span>
         <span className="chrome-meta">{state.busy ? "● working" : "○ idle"}</span>
       </div>
-      <div className="player-body" role="log" aria-live="off">
+      <div className="player-body" ref={bodyRef} role="log" aria-live="off">
         {state.entries.map((e, i) => (
           <div key={i} className={e.kind === "approval" && !approvalResolved(i) ? "pending" : undefined}>
             <EntryView e={e} />

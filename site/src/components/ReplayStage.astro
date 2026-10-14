@@ -1,7 +1,7 @@
 ---
-/** Terminal replay stage: server-rendered poster (JS-off & pre-hydration)
- *  plus the hydrated island. variant "hero" loops the highlight cut;
- *  "full" plays the chaptered canonical session. */
+/** Terminal replay stage: server-rendered poster (JS-off & pre-hydration,
+ *  same shell metrics as the live player → zero CLS) plus the hydrated island.
+ *  variant "hero" loops the highlight cut; "full" plays the chaptered session. */
 import ReplayPlayer from "@/islands/ReplayPlayer.tsx";
 import { stateAt, type Entry } from "@/replay/engine";
 import highlight from "@/replay/highlight.json";
@@ -26,19 +26,33 @@ function posterLine(e: Entry): string {
 }
 ---
 <div class="player-wrap" data-player-wrap>
-  <div class="player-static" aria-hidden="false">
-    {posterState.entries.map((e) => (
-      <div class={e.kind === "user" ? "entry-user" : undefined}>{posterLine(e)}</div>
-    ))}
-    <p class="js-note">JS required to play</p>
+  <div class="player-static" aria-label="Session preview (enable JavaScript to play)">
+    <div class="player-chrome">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="chrome-title">turnwright session — {variant === "hero" ? "highlight replay" : "full replay"}</span>
+      <span class="chrome-meta">○ idle</span>
+    </div>
+    <div class="player-body">
+      {posterState.entries.map((e) => (
+        <div class={e.kind === "user" ? "entry-user" : undefined}>{posterLine(e)}</div>
+      ))}
+      <p class="js-note">JS required to play</p>
+    </div>
+    <div class="player-status"><span>↑0 ↓0</span><span class="spacer"></span><span>0.0s</span></div>
+    <div class="fake-controls" aria-hidden="true">
+      <span class="fake-btn"></span><span class="fake-btn"></span>
+    </div>
   </div>
   {variant === "hero" ? (
-    <ReplayPlayer client:visible script={script} autoplay loop startT={2400} label="turnwright session — highlight replay" />
+    <ReplayPlayer client:idle script={script} autoplay loop startT={2400} label="turnwright session — highlight replay" />
   ) : (
     <ReplayPlayer client:visible script={script} chapters={CHAPTERS} label="turnwright session — full replay" />
   )}
 </div>
 
 <style>
-  .player-wrap :global(.player) { width: 100%; }
+  .player-wrap :global(.player), .player-wrap :global(astro-island) { width: 100%; }
+  .player-static .entry-user { color: var(--text); }
+  .player-static .entry-user::before { content: ""; }
+  .player-wrap :global(.js-note) { margin: 12px 0 0; font-size: 11px; color: var(--muted-text); letter-spacing: 0.1em; text-transform: uppercase; }
 </style>

@@ -3,7 +3,6 @@ import { applyEvent, initialRenderState } from "../replay/engine";
 import type { AgentEventLike } from "../replay/events";
 import { approvalOutcome, initialPlaygroundState, playgroundRespond, type PlaygroundState } from "../playground/script";
 import { EntryView } from "./EntryView";
-import "./replay.css";
 
 const HINTS = ["/help", "/status", "/theme turnwright-light", "run tests", "what does the engine do?"];
 

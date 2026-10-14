@@ -13,6 +13,7 @@ export default defineConfig({
     rehypePlugins: [rehypeDocLinks],
     shikiConfig: { theme: "github-dark", wrap: false },
   },
-  build: { inlineStylesheets: "auto" },
+  // static site with small CSS: inline everything to kill render-blocking requests
+  build: { inlineStylesheets: "always" },
   vite: { build: { assetsInlineLimit: 4096 } },
 });

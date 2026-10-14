@@ -13,10 +13,10 @@ const { label = "" } = Astro.props;
 </div>
 
 <style>
-  .dim-rule { display: flex; align-items: center; gap: 10px; color: var(--muted); width: 100%; }
+  .dim-rule { display: flex; align-items: center; gap: 10px; color: var(--border); width: 100%; }
   .line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent); }
   .label {
     font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em;
-    text-transform: uppercase; color: var(--muted); white-space: nowrap;
+    text-transform: uppercase; color: var(--muted-text); white-space: nowrap;
   }
 </style>

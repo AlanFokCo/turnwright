@@ -23,7 +23,7 @@ const base = import.meta.env.BASE_URL;
       <summary class="label">Contents</summary>
       <DocsSidebar items={navItems} slug={slug} />
     </details>
-    <aside class="sidebar-desktop"><DocsSidebar items={navItems} slug={slug} /></aside>
+    <aside class="sidebar-desktop" aria-label="Documentation sidebar"><DocsSidebar items={navItems} slug={slug} /></aside>
     <article class="docs-article">
       <slot />
       <nav class="pager" aria-label="Docs pagination">
@@ -42,7 +42,7 @@ const base = import.meta.env.BASE_URL;
       </nav>
       <p class="edit"><a href={editUrl}>Edit this page on GitHub ↗</a></p>
     </article>
-    <aside class="toc-desktop"><DocsToc headings={headings} /></aside>
+    <aside class="toc-desktop" aria-label="Table of contents"><DocsToc headings={headings} /></aside>
   </div>
 </BaseLayout>
 
@@ -62,7 +62,7 @@ const base = import.meta.env.BASE_URL;
     .docs-shell { grid-template-columns: minmax(0, 1fr); gap: calc(var(--space) * 4); }
     .sidebar-desktop, .toc-desktop { display: none; }
     .sidebar-mobile { display: block; }
-    .sidebar-mobile summary { cursor: pointer; padding: 8px 0; color: var(--muted); }
+    .sidebar-mobile summary { cursor: pointer; padding: 8px 0; color: var(--muted-text); }
     .sidebar-mobile[open] { padding-bottom: calc(var(--space) * 2); border-bottom: var(--hairline); }
   }
 
@@ -76,15 +76,15 @@ const base = import.meta.env.BASE_URL;
   }
   .docs-article :global(h1 + h2), .docs-article :global(h1 + p + h2) { margin-top: calc(var(--space) * 4); }
   .docs-article :global(h3) { font-size: 1.05rem; margin-top: calc(var(--space) * 5); margin-bottom: calc(var(--space) * 2); scroll-margin-top: calc(var(--space) * 10); }
-  .docs-article :global(h4) { font-family: var(--font-mono); font-size: 0.9rem; margin-top: calc(var(--space) * 4); margin-bottom: calc(var(--space) * 2); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .docs-article :global(h4) { font-family: var(--font-mono); font-size: 0.9rem; margin-top: calc(var(--space) * 4); margin-bottom: calc(var(--space) * 2); color: var(--muted-text); letter-spacing: 0.04em; text-transform: uppercase; }
   .docs-article :global(p) { margin-bottom: calc(var(--space) * 2.5); }
   .docs-article :global(ul), .docs-article :global(ol) { padding-left: 1.4em; margin-bottom: calc(var(--space) * 2.5); }
   .docs-article :global(li) { margin-bottom: calc(var(--space) * 1); }
-  .docs-article :global(li::marker) { color: var(--muted); }
+  .docs-article :global(li::marker) { color: var(--muted-text); }
   .docs-article :global(strong) { color: #fff; font-weight: 650; }
   .docs-article :global(blockquote) {
     margin: calc(var(--space) * 3) 0; padding: calc(var(--space) * 1.5) calc(var(--space) * 3);
-    border-left: 2px solid var(--accent); color: var(--muted); background: color-mix(in srgb, var(--surface) 50%, transparent);
+    border-left: 2px solid var(--accent); color: var(--muted-text); background: color-mix(in srgb, var(--surface) 50%, transparent);
   }
   .docs-article :global(blockquote p:last-child) { margin-bottom: 0; }
   .docs-article :global(code:not(pre code)) {
@@ -104,7 +104,7 @@ const base = import.meta.env.BASE_URL;
   }
   .docs-article :global(th) {
     text-align: left; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--muted); font-weight: 500;
+    text-transform: uppercase; color: var(--muted-text); font-weight: 500;
     padding: 8px 12px; border-bottom: 1px solid var(--border);
   }
   .docs-article :global(td) { padding: 8px 12px; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); vertical-align: top; }
@@ -115,9 +115,9 @@ const base = import.meta.env.BASE_URL;
 
   /* src marginalia */
   .docs-article :global(.src-note) {
-    font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--muted);
+    font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
     border-left: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
-    padding: 3px 10px; margin: calc(var(--space) * 1.5) 0; border-radius: 0 3px 3px 0;
+    padding: 3px 10px; margin: calc(var(--space) * 1.5) 0; border-radius: 0 3px 3px 0; color: var(--muted-text);
     background: color-mix(in srgb, var(--surface) 55%, transparent);
   }
   @media (min-width: 1400px) {
@@ -137,6 +137,6 @@ const base = import.meta.env.BASE_URL;
   .pager-card strong { color: var(--text); font-size: 14.5px; font-weight: 600; }
   .pager-card[rel="next"] { text-align: right; }
   .edit { margin-top: calc(var(--space) * 4); font-size: 13px; }
-  .edit a { color: var(--muted); text-decoration: none; }
+  .edit a { color: var(--muted-text); text-decoration: none; }
   .edit a:hover { color: var(--accent); }
 </style>

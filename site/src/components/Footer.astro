@@ -17,13 +17,13 @@ const year = new Date().getFullYear();
       <p class="tagline">shape your code at the lathe</p>
       <p class="meta">MIT License · built at the lathe · {year}</p>
     </div>
-    <nav class="col" aria-label="Documentation">
+    <div class="col">
       <p class="label">Documentation</p>
       <ul>
         {links.map((l) => <li><a href={`${base}docs/${l.slug}/`}>{l.title}</a></li>)}
       </ul>
-    </nav>
-    <nav class="col" aria-label="Project">
+    </div>
+    <div class="col">
       <p class="label">Project</p>
       <ul>
         <li><a href="https://github.com/AlanFokCo/turnwright">GitHub ↗</a></li>
@@ -31,7 +31,7 @@ const year = new Date().getFullYear();
         <li><a href="https://github.com/AlanFokCo/turnwright/issues">Issues ↗</a></li>
         <li><a href="https://github.com/agentscope-ai/agentscope-go">agentscope-go ↗</a></li>
       </ul>
-    </nav>
+    </div>
   </div>
 </footer>
 
@@ -45,7 +45,7 @@ const year = new Date().getFullYear();
   .brand { font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: var(--text); margin: 0 0 6px; }
   .brand span { color: var(--accent); }
   .tagline { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted-text); margin: 0 0 16px; }
-  .meta { font-size: 11.5px; color: var(--muted); margin: 0; }
+  .meta { font-size: 11.5px; color: var(--muted-text); margin: 0; }
   .col .label { margin: 0 0 10px; }
   .col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
   .col a { font-size: 13px; color: var(--muted-text); text-decoration: none; transition: color 150ms var(--ease-machine); }

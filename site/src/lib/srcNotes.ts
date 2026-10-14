@@ -6,6 +6,6 @@ export function inlineSrcNotes(md: string): string {
   return md.replace(
     SRC_RE,
     (_m, ref: string) =>
-      `<aside class="src-note" aria-label="Source reference">⊕ src: ${ref.replace(/[<&]/g, "")}</aside>`,
+      `<p class="src-note">⊕ src: ${ref.replace(/[<&]/g, "")}</p>`,
   );
 }

@@ -26,8 +26,9 @@ const plates = [
 
 <BaseLayout title="turnwright — shape your code at the lathe">
   <!-- 1 · Hero (layout A · Split) -->
+  <!-- hero paints immediately (it is the LCP region — no scroll-reveal gate) -->
   <section class="section hero">
-    <Reveal class="hero-copy">
+    <div class="hero-copy">
       <DimensionRule label="workpiece · steel · amber" />
       <h1 class="hero-h1">Shape your code<br /><span class="amp">at the lathe.</span></h1>
       <p class="lede">
@@ -41,10 +42,10 @@ const plates = [
         <a class="ghost" href="#watch">watch it work ↓</a>
       </div>
       <p class="hero-meta label">darwin · linux — x64 / arm64 · windows via wsl2</p>
-    </Reveal>
-    <Reveal index={1} class="hero-stage">
+    </div>
+    <div class="hero-stage">
       <ReplayStage variant="hero" />
-    </Reveal>
+    </div>
   </section>
 
   <!-- 01 · Watch a real turn -->
@@ -172,7 +173,7 @@ pnpm install && pnpm dev</code></pre>
     border: 1px solid var(--border); border-radius: 4px;
     font-size: 12.5px; line-height: 1.7; overflow-x: auto;
   }
-  .install-card .hint { font-size: 12px; color: var(--muted); margin: 0; }
+  .install-card .hint { font-size: 12px; color: var(--muted-text); margin: 0; }
   .install-card .hint a { color: var(--muted-text); }
   .docs-cta { margin-top: calc(var(--space) * 8); }
   .docs-cta p { margin-top: calc(var(--space) * 3); font-size: 15px; }
