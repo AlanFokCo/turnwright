@@ -1,0 +1,30 @@
+---
+import "@fontsource/jetbrains-mono/latin-400.css";
+import "@fontsource/jetbrains-mono/latin-700.css";
+import "@fontsource-variable/inter";
+import "../styles/global.css";
+
+interface Props { title: string; description?: string; }
+const { title, description = "turnwright — a coding agent for the terminal, assembled on agentscope-go." } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta name="theme-color" content="#0e0f13" />
+  </head>
+  <body>
+    <slot name="header" />
+    <main id="main"><slot /></main>
+  </body>
+</html>

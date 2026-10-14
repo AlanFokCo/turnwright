@@ -1,0 +1,74 @@
+/* turnwright site — "The Lathe" design tokens (spec §2). Dark-only. */
+:root {
+  --bg: #0e0f13;
+  --surface: #16181f;
+  --text: #e7e9ee;
+  --muted: #6b7280;
+  --accent: #f59e0b;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
+  --border: #2a2e3a;
+  --selection: #2e3344;
+
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
+
+  --ease-machine: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --space: 0.5rem; /* 8px rhythm: multiples via calc(var(--space) * n) */
+  --measure: 72ch;
+  --gutter: clamp(1rem, 4vw, 3rem);
+  --section-y: clamp(4rem, 10vh, 7rem);
+  --hairline: 1px solid var(--border);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { color-scheme: dark; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--selection); }
+
+/* Type scale — display sizes use the mono face (lathe character). */
+h1, h2, h3 { font-family: var(--font-mono); font-weight: 700; letter-spacing: -0.02em; line-height: 1.08; margin: 0; }
+h1 { font-size: clamp(2.4rem, 6vw, 4.2rem); }
+h2 { font-size: clamp(1.6rem, 3.4vw, 2.4rem); }
+h3 { font-size: clamp(1.1rem, 2vw, 1.35rem); letter-spacing: -0.01em; }
+p { margin: 0 0 calc(var(--space) * 2); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+code, kbd, pre { font-family: var(--font-mono); }
+
+/* Utility: small uppercase engineering label */
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* Utility: section shell */
+.section {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: var(--section-y) var(--gutter);
+}
+/* Utility: machined hairline with inset highlight */
+.rule-machined {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border) 12%, var(--border) 88%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+/* Utility: focus ring, keyboard only */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }

@@ -49,3 +49,8 @@ docs/design/
 # local agent state dirs
 .remember/
 .qwen/
+.superpowers/
+
+# site
+site/dist/
+.astro/
