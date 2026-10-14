@@ -1,0 +1,26 @@
+[
+  { "t": 0,    "ev": { "type": "user_message", "text": "explain what this repo does", "session_id": "demo" } },
+  { "t": 300,  "ev": { "type": "reply_start", "reply_id": "r1", "session_id": "demo" } },
+  { "t": 900,  "ev": { "type": "thinking_block_delta", "block_id": "b0", "delta": "Reading the layout: Go engine, TypeScript TUI, one JSON seam…" } },
+  { "t": 2200, "ev": { "type": "text_block_start", "block_id": "b1" } },
+  { "t": 2400, "ev": { "type": "text_block_delta", "block_id": "b1", "delta": "turnwright is two halves: a Go engine assembled on agentscope-go, " } },
+  { "t": 3300, "ev": { "type": "text_block_delta", "block_id": "b1", "delta": "and an OpenTUI + React terminal client. " } },
+  { "t": 4200, "ev": { "type": "text_block_delta", "block_id": "b1", "delta": "They speak LCP — JSON-RPC 2.0, one message per line over stdio." } },
+  { "t": 5600, "ev": { "type": "model_call_end", "input_tokens": 1840, "output_tokens": 96 } },
+  { "t": 5800, "ev": { "type": "reply_end", "finished_reason": "stop" } },
+  { "t": 7000,  "ev": { "type": "user_message", "text": "fix the failing lcp tests", "session_id": "demo" } },
+  { "t": 7300,  "ev": { "type": "reply_start", "reply_id": "r2", "session_id": "demo" } },
+  { "t": 8000,  "ev": { "type": "tool_call_start", "tool_call_id": "tc1", "tool_call_name": "read", "tool_call_input": "{\"path\":\"internal/lcp/server.go\"}" } },
+  { "t": 9500,  "ev": { "type": "tool_result_end", "tool_call_id": "tc1", "message": "412 lines · approval flow at :456" } },
+  { "t": 10200, "ev": { "type": "tool_call_start", "tool_call_id": "tc2", "tool_call_name": "edit", "tool_call_input": "{\"path\":\"internal/lcp/server.go\",\"change\":\"reply-id unmarshal guard\"}" } },
+  { "t": 12400, "ev": { "type": "tool_call_end", "tool_call_id": "tc2", "state": "success" } },
+  { "t": 12600, "ev": { "type": "tool_result_end", "tool_call_id": "tc2", "message": "edit applied · +4 −2" } },
+  { "t": 14000, "ev": { "type": "tool_call_start", "tool_call_id": "tc3", "tool_call_name": "bash", "tool_call_input": "{\"cmd\":\"go test ./internal/lcp\"}" } },
+  { "t": 15200, "ev": { "type": "require_user_confirm", "reply_id": "r2", "tool_calls": [
+      { "type": "tool_use", "id": "tc3", "name": "bash", "input": "{\"cmd\":\"go test ./internal/lcp\"}", "state": "pending",
+        "suggested_rules": [{ "toolName": "bash", "behavior": "allow", "pattern": "go test *" }] } ] } },
+  { "t": 17700, "ev": { "type": "tool_call_end", "tool_call_id": "tc3", "state": "success" } },
+  { "t": 19200, "ev": { "type": "tool_result_end", "tool_call_id": "tc3", "message": "ok  github.com/alanfokco/turnwright/internal/lcp  1.147s" } },
+  { "t": 19600, "ev": { "type": "model_call_end", "input_tokens": 2610, "output_tokens": 140 } },
+  { "t": 19800, "ev": { "type": "reply_end", "finished_reason": "stop" } }
+]

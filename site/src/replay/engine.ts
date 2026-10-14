@@ -41,6 +41,16 @@ export function applyEvent(st: RenderState, ev: AgentEventLike): RenderState {
   const last = entries[entries.length - 1];
 
   switch (ev.type) {
+    // Player-side meta events (see chapters.ts): the upstream vocabulary has
+    // no carrier for the user's own lines or TUI notices, so scripts mark them.
+    case "user_message":
+      push({ kind: "user", text: (ev as { text?: string }).text ?? "" });
+      break;
+    case "system_notice": {
+      const n = ev as { text?: string; tone?: "info" | "warn" | "error" };
+      push({ kind: "notice", text: n.text ?? "", tone: n.tone ?? "info" });
+      break;
+    }
     case "reply_start":
       busy = true;
       break;

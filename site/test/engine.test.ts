@@ -43,6 +43,12 @@ describe("replay engine", () => {
     st = applyEvent(st, { type: "reply_end", error: { message: "boom" } });
     expect(st.entries.at(-1)).toMatchObject({ kind: "notice", tone: "error", text: "boom" });
   });
+  it("user_message and system_notice meta events render as entries", () => {
+    let st = applyEvent(initialRenderState(), { type: "user_message", text: "hello" });
+    expect(st.entries.at(-1)).toMatchObject({ kind: "user", text: "hello" });
+    st = applyEvent(st, { type: "system_notice", text: "theme → turnwright-light" });
+    expect(st.entries.at(-1)).toMatchObject({ kind: "notice", tone: "info", text: "theme → turnwright-light" });
+  });
   it("exceed_max_iters becomes a warn notice", () => {
     const st = applyEvent(initialRenderState(), { type: "exceed_max_iters" });
     expect(st.entries.at(-1)).toMatchObject({ kind: "notice", tone: "warn" });
