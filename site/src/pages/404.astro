@@ -1,10 +1,33 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+const base = import.meta.env.BASE_URL;
 ---
-<BaseLayout title="404 — workpiece not found">
-  <section class="section" style="text-align:center">
+<BaseLayout title="404 — workpiece not found" description="This page slipped out of the chuck.">
+  <section class="section notfound">
+    <svg class="crosshair" width="96" height="96" viewBox="0 0 96 96" aria-hidden="true">
+      <circle cx="48" cy="48" r="22" fill="none" stroke="currentColor" stroke-width="1" />
+      <circle cx="48" cy="48" r="3" fill="currentColor" />
+      <line x1="48" y1="4" x2="48" y2="30" stroke="currentColor" stroke-width="1" />
+      <line x1="48" y1="66" x2="48" y2="92" stroke="currentColor" stroke-width="1" />
+      <line x1="4" y1="48" x2="30" y2="48" stroke="currentColor" stroke-width="1" />
+      <line x1="66" y1="48" x2="92" y2="48" stroke="currentColor" stroke-width="1" />
+    </svg>
     <p class="label">error 404 · tolerance exceeded</p>
     <h1>Workpiece not found.</h1>
-    <p><a href={`${import.meta.env.BASE_URL}`}>Back to the shop floor</a></p>
+    <p class="links">
+      <a href={base}>Back to the shop floor</a>
+      <span aria-hidden="true">·</span>
+      <a href={`${base}docs/`}>Read the docs</a>
+    </p>
   </section>
 </BaseLayout>
+
+<style>
+  .notfound {
+    min-height: 60vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; gap: calc(var(--space) * 2);
+  }
+  .crosshair { color: var(--accent); opacity: 0.85; margin-bottom: calc(var(--space) * 2); }
+  h1 { margin: 0; }
+  .links { display: flex; gap: 12px; color: var(--muted); font-size: 14px; }
+</style>

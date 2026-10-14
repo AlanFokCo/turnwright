@@ -1,0 +1,60 @@
+---
+interface Props { command?: string; compact?: boolean; }
+const { command = "npm i -g @turnwright/cli", compact = false } = Astro.props;
+---
+<button type="button" class:list={["install-chip", { compact }]} data-install-chip data-command={command}
+        aria-label={`Copy install command: ${command}`}>
+  <code>{command}</code>
+  <span class="icon" aria-hidden="true" data-icon>⧉</span>
+  <span class="sr-only" data-feedback></span>
+</button>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-install-chip]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const cmd = btn.dataset.command!;
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(cmd);
+        ok = true;
+      } catch {
+        // Clipboard API unavailable (insecure context/permissions) — textarea fallback
+        const ta = document.createElement("textarea");
+        ta.value = cmd;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { ok = document.execCommand("copy"); } catch { ok = false; }
+        ta.remove();
+      }
+      btn.dataset.copied = ok ? "true" : "false";
+      const fb = btn.querySelector("[data-feedback]");
+      if (fb) fb.textContent = ok ? "copied" : "select and copy manually";
+      setTimeout(() => {
+        delete btn.dataset.copied;
+        if (fb) fb.textContent = "";
+      }, 1600);
+    });
+  });
+</script>
+
+<style>
+  .install-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 13px; line-height: 1;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 2px;
+    padding: 10px 14px; cursor: pointer; min-height: 44px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: border-color 150ms var(--ease-machine), color 150ms var(--ease-machine);
+  }
+  .install-chip:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+  .install-chip:hover .icon { color: var(--accent); }
+  .install-chip[data-copied="true"] { border-color: var(--success); }
+  .install-chip[data-copied="true"] .icon { color: var(--success); }
+  .icon { color: var(--muted-text); font-size: 14px; transition: color 150ms var(--ease-machine); }
+  .compact { padding: 8px 10px; font-size: 12px; min-height: 36px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 640px) { .compact code { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+</style>

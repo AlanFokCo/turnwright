@@ -4,6 +4,7 @@
   --surface: #16181f;
   --text: #e7e9ee;
   --muted: #6b7280;
+  --muted-text: #9ca3af; /* AA-safe muted for small text (5.7:1 on --bg); --muted is decorative */
   --accent: #f59e0b;
   --success: #34d399;
   --warn: #fbbf24;

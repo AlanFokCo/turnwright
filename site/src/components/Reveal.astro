@@ -1,0 +1,41 @@
+---
+/** Scroll-reveal wrapper: adds .in when the element enters the viewport.
+ *  Reduced motion → content visible immediately, no transition (global CSS
+ *  kills transition durations). Stagger via `index` prop (120ms steps). */
+interface Props { index?: number; as?: string; class?: string; }
+const { index = 0, as: Tag = "div", class: className = "" } = Astro.props;
+---
+<Tag class:list={["reveal", className]} style={`--i:${index}`} data-reveal>
+  <slot />
+</Tag>
+
+<script>
+  const els = document.querySelectorAll<HTMLElement>("[data-reveal]");
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+        }
+      },
+      { rootMargin: "0px 0px -8% 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+  } else {
+    els.forEach((el) => el.classList.add("in"));
+  }
+</script>
+
+<style>
+  .reveal {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 420ms var(--ease-machine) calc(var(--i, 0) * 120ms),
+      transform 420ms var(--ease-machine) calc(var(--i, 0) * 120ms);
+  }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; }
+  }
+</style>

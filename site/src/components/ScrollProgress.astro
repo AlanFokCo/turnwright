@@ -1,0 +1,26 @@
+---
+// 1.5px amber rule under the header tracking document scroll progress.
+---
+<div class="scroll-progress" aria-hidden="true"><div class="bar" data-progress-bar></div></div>
+
+<script>
+  const bar = document.querySelector<HTMLElement>("[data-progress-bar]");
+  if (bar) {
+    let ticking = false;
+    const update = () => {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - window.innerHeight;
+      bar.style.width = `${max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0}%`;
+      ticking = false;
+    };
+    window.addEventListener("scroll", () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+  }
+</script>
+
+<style>
+  .scroll-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 1.5px; background: transparent; }
+  .bar { height: 100%; width: 0; background: var(--accent); box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent); }
+</style>

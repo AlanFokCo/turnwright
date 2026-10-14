@@ -3,6 +3,8 @@ import "@fontsource/jetbrains-mono/latin-400.css";
 import "@fontsource/jetbrains-mono/latin-700.css";
 import "@fontsource-variable/inter";
 import "../styles/global.css";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
 
 interface Props { title: string; description?: string; }
 const { title, description = "turnwright — a coding agent for the terminal, assembled on agentscope-go." } = Astro.props;
@@ -24,7 +26,18 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="theme-color" content="#0e0f13" />
   </head>
   <body>
-    <slot name="header" />
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Header />
     <main id="main"><slot /></main>
+    <Footer />
   </body>
 </html>
+
+<style>
+  .skip-link {
+    position: absolute; left: -9999px; top: 0; z-index: 100;
+    background: var(--accent); color: #141414; padding: 8px 16px;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700; text-decoration: none;
+  }
+  .skip-link:focus { left: 8px; top: 8px; }
+</style>
