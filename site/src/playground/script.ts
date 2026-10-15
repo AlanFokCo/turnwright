@@ -48,7 +48,18 @@ export function playgroundRespond(
   }
 
   if (cmd.startsWith("/theme")) {
-    const name = cmd.slice("/theme".length).trim() || "turnwright-dark";
+    const name = cmd.slice("/theme".length).trim();
+    if (!name) {
+      // the real TUI opens a picker here; the playground has none — point at
+      // something the user can actually type instead of silently applying
+      return {
+        events: notice(
+          `theme: ${st.theme === "light" ? "turnwright-light" : "turnwright-dark"} — ` +
+            "the TUI opens a picker here; try /theme turnwright-light or any override name",
+        ),
+        state: st,
+      };
+    }
     return {
       events: notice(`theme → ${name}`),
       state: { ...st, theme: name === "turnwright-light" ? "light" : "dark" },

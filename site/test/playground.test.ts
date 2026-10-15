@@ -19,6 +19,11 @@ describe("playground", () => {
     expect(confirm?.tool_calls?.[0]?.name).toBe("bash");
     expect(confirm?.tool_calls?.[0]?.suggested_rules?.length).toBeGreaterThan(0);
   });
+  it("bare /theme hints instead of silently applying a theme", () => {
+    const { events, state } = playgroundRespond("/theme", initialPlaygroundState());
+    expect(state.theme).toBe("dark"); // unchanged — the TUI would open a picker here
+    expect(JSON.stringify(events)).toContain("try /theme turnwright-light");
+  });
   it("unknown slash command gets the real warning", () => {
     const { events } = playgroundRespond("/frobnicate", initialPlaygroundState());
     expect(JSON.stringify(events)).toContain("unknown command: /frobnicate (try /help)");

@@ -180,7 +180,15 @@ pre.astro-code span[style*="#6a737d" i] { color: #9198a1 !important; }
 }
 .player-controls button:hover { color: var(--p-text); border-color: color-mix(in srgb, var(--accent) 50%, var(--p-border)); }
 .player-controls input[type="range"] { flex: 1; accent-color: var(--accent); min-width: 60px; }
-.chapters { display: flex; gap: 4px; flex-wrap: wrap; }
+/* single-line scrollable strip on narrow screens: wrapping cramped the
+   controls row at 390px and shrank tap targets */
+.chapters {
+  display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto;
+  scrollbar-width: none; max-width: 46vw;
+}
+.chapters::-webkit-scrollbar { display: none; }
+.chapters button { white-space: nowrap; flex: 0 0 auto; }
+@media (max-width: 640px) { .chapters { max-width: 40vw; } }
 .chapters button.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--p-border)); }
 
 /* Playground specifics */

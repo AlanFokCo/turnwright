@@ -17,6 +17,8 @@ const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
 )}
 
 <script>
+  // Page-lifetime observer by design: Astro is an MPA — there is no component
+  // unmount to disconnect at; the observer dies with the page.
   const links = [...document.querySelectorAll<HTMLElement>("[data-toc]")];
   const targets = links
     .map((a) => document.getElementById(a.dataset.toc!))

@@ -31,10 +31,17 @@ const { command = "npm i -g @turnwright/cli", compact = false } = Astro.props;
       btn.dataset.copied = ok ? "true" : "false";
       const fb = btn.querySelector("[data-feedback]");
       if (fb) fb.textContent = ok ? "copied" : "select and copy manually";
-      setTimeout(() => {
-        delete btn.dataset.copied;
-        if (fb) fb.textContent = "";
-      }, 1600);
+      // clear a pending reset so rapid clicks keep the feedback for a full
+      // window after the LAST click (islands never unmount, but timers stack)
+      const pending = Number(btn.dataset.resetTimer ?? 0);
+      if (pending) clearTimeout(pending);
+      btn.dataset.resetTimer = String(
+        setTimeout(() => {
+          delete btn.dataset.copied;
+          delete btn.dataset.resetTimer;
+          if (fb) fb.textContent = "";
+        }, 1600),
+      );
     });
   });
 </script>
