@@ -61,6 +61,15 @@ let setup: TestRendererSetup;
 let root: Root;
 let client: FakeClient;
 
+async function pumpUntil(pred: () => boolean, ms = 3000) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (pred()) return;
+    await setup.renderOnce();
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}
+
 async function pump(n = 4) {
   for (let i = 0; i < n; i++) await setup.renderOnce();
   // let the App's 16ms event-batching window fire, then render its result
@@ -104,6 +113,7 @@ describe("App", () => {
     await type("hello turnwright");
     await enter();
     await pump(6);
+    await pumpUntil(() => setup.captureCharFrame().includes("pong: hello turnwright"));
     const frame = setup.captureCharFrame();
     expect(frame).toContain("pong: hello turnwright");
     expect(client.lastInput).toBe("hello turnwright");

@@ -7,6 +7,9 @@ import type { Theme } from "./theme.js";
 export function makeMarkdownStyle(renderer: unknown, theme: Theme): SyntaxStyle | null {
   try {
     const c = theme.colors;
+    // OpenTUI ≥0.6.1 wants a NativeResourceOwner (renderer.nativeScene), not
+    // the renderer itself; older builds accepted the renderer — keep both.
+    const owner = (renderer as { nativeScene?: unknown })?.nativeScene ?? renderer;
     return SyntaxStyle.fromStyles(
       {
         "markup.heading": { fg: c.accent, bold: true },
@@ -24,7 +27,7 @@ export function makeMarkdownStyle(renderer: unknown, theme: Theme): SyntaxStyle 
         punctuation: { fg: c.muted },
         default: { fg: c.text },
       },
-      renderer as never,
+      owner as never,
     );
   } catch {
     return null; // plain-text fallback

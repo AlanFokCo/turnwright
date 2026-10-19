@@ -45,9 +45,15 @@ test("walkthrough", async () => {
   c.emit("event", { type: "text_block_delta", session_id: "a1b2c3d4", reply_id: "r1", delta: "改好了：删掉夸张修辞，首行只留名字，描述压成一句。" });
   c.emit("event", { type: "model_call_end", session_id: "a1b2c3d4", reply_id: "r1", input_tokens: 3210, output_tokens: 212 });
   c.emit("event", { type: "reply_end", session_id: "a1b2c3d4", reply_id: "r1" });
-  await new Promise((r) => setTimeout(r, 30));
-  for (let i = 0; i < 6; i++) await setup.renderOnce();
-  const frame = setup.captureCharFrame();
+  // markdown replies paint asynchronously: wait for the closing text
+  const deadline = Date.now() + 5000;
+  let frame = "";
+  while (Date.now() < deadline) {
+    await setup.renderOnce();
+    await new Promise((r) => setTimeout(r, 25));
+    frame = setup.captureCharFrame();
+    if (frame.includes("改好了")) break;
+  }
   require("node:fs").writeFileSync("/tmp/walkthrough.txt", frame);
   // interleaving: closing text renders after both tool cards
   expect(frame.indexOf("改好了")).toBeGreaterThan(frame.indexOf("✓ edit"));

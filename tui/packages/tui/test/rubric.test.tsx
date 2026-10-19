@@ -102,8 +102,15 @@ describe("rubric", () => {
       segments: [{ kind: "text" as const, text: "好的，已修复 `main.go` 的空指针。Done — 测试全绿。" }],
     };
     root.render(<box flexDirection="column"><MessageView entry={reply} theme={builtinTheme("turnwright-dark")} /></box>);
-    for (let i = 0; i < 4; i++) await setup.renderOnce();
-    const frame = setup.captureCharFrame();
+    // <markdown> parses asynchronously (tree-sitter worker): wait for paint
+    const deadline = Date.now() + 3000;
+    let frame = "";
+    while (Date.now() < deadline) {
+      await setup.renderOnce();
+      await new Promise((r) => setTimeout(r, 25));
+      frame = setup.captureCharFrame();
+      if (frame.includes("好的，已修复")) break;
+    }
     expect(frame).toContain("好的，已修复");
     expect(frame).toContain("测试全绿");
     root.unmount();
@@ -136,9 +143,16 @@ describe("rubric", () => {
       c.emit("event", { type: "text_block_delta", session_id: "s", reply_id: `m${i}`, delta: `scroll-marker-${i}` });
       c.emit("event", { type: "reply_end", session_id: "s", reply_id: `m${i}` });
     }
-    await new Promise((r) => setTimeout(r, 30));
-    for (let i = 0; i < 4; i++) await setup.renderOnce();
-    expect(setup.captureCharFrame()).toContain("scroll-marker-59");
+    // 60 <markdown> elements parse asynchronously: wait for the last to paint
+    const deadline = Date.now() + 5000;
+    let painted = "";
+    while (Date.now() < deadline) {
+      await setup.renderOnce();
+      await new Promise((r) => setTimeout(r, 25));
+      painted = setup.captureCharFrame();
+      if (painted.includes("scroll-marker-59")) break;
+    }
+    expect(painted).toContain("scroll-marker-59");
     expect(setup.captureCharFrame()).not.toContain("scroll-marker-0  ");
     await setup.mockMouse.scroll(40, 5, "up");
     await setup.mockMouse.scroll(40, 5, "up");
