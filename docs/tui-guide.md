@@ -145,10 +145,18 @@ indicator appears in the status line and the cursor becomes a block.
 
 ## Auto-compaction
 
-The agent runs with agent-driven context compression always on: as the
-transcript approaches the model's context window it compacts older history
-itself. Manual `/compact` is a stub pending an upstream API — you don't need
-it; long sessions keep working.
+Two compression layers are active:
+
+- **Automatic, token-threshold**: when the transcript passes
+  `compact_ratio` (default 0.8) of the context window (`context_size`,
+  auto-detected or set in config), older history is summarized and the
+  summary persists in the session.
+- **Agent-driven**: the agent may compress on its own initiative between
+  thresholds.
+
+Manual `/compact` remains a stub pending an upstream export — with the two
+automatic layers you don't need it. Long sessions stay inside the window
+instead of being tail-truncated by the provider.
 
 ## Status line
 

@@ -30,7 +30,12 @@ prompt_caching = false            # Anthropic prompt caching (Anthropic only)
 context_size   = 0                # context-window override, tokens (ollama only)
 
 # Reserved — parsed but not yet wired (pending agentscope-go APIs):
-# thinking, thinking_budget, effort, jail, compact_ratio
+# thinking, thinking_budget, effort, jail
+
+# Compression & output budget:
+compact_ratio     = 0.8   # trigger auto-compression at 80% of the window
+context_size      = 0     # 0 = auto-detect; set for proxy models with odd windows
+max_output_tokens = 32768
 
 [brand]
 name    = "turnwright"
@@ -54,12 +59,13 @@ theme   = "turnwright-dark"
 | `permission` | string | `accept_edits` | Modes: [TUI guide](./tui-guide.md#permission-modes) |
 | `max_iters` | int | `50` | Agent loop iteration cap; exceeding it ends the turn with an `exceed_max_iters` event |
 | `prompt_caching` | bool | `false` | Anthropic only; ignored by other providers |
-| `context_size` | int | model card | **ollama only** — passed to the ollama client; other providers ignore it |
+| `context_size` | int | auto-detect | Context-window override in tokens for **all** providers: drives the auto-compression threshold (and is passed to the ollama client). Set it when a proxy/gateway model's real window differs from its card |
+| `max_output_tokens` | int | `32768` | Model output cap per call. Keep it generous: a cap that truncates a turn mid-tool-call corrupts the session's later context |
 | `thinking` | bool | `false` | *Reserved, not yet wired* |
 | `thinking_budget` | int | 4096 when thinking on | *Reserved, not yet wired* |
 | `effort` | string | provider default | *Reserved, not yet wired* |
 | `jail` | bool | `false` | *Reserved, not yet wired* |
-| `compact_ratio` | float | engine default | *Reserved, not yet wired* (clamped to ≤ 0.95). Agent-driven auto-compaction is always active |
+| `compact_ratio` | float | `0.8` (upstream) | Auto-compression trigger as a fraction of the context window (clamped ≤ 0.9) |
 
 <!-- src: internal/config/config.go Load (defaults) / mergeTOMLIntoFlags -->
 

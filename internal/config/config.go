@@ -72,8 +72,9 @@ type Config struct {
 	ReasoningEffort string // "low"|"medium"|"high"; "" = provider default
 	Jail           bool   // confine file tools to cwd
 	PromptCaching  bool   // Anthropic prompt caching (system + tools)
-	CompactRatio   float64 // fraction of context triggering auto-compact (0 = default)
-	ContextSize    int     // model context window override in tokens (0 = model card)
+	CompactRatio   float64 // trigger ratio for auto-compression (0 = upstream default 0.8; clamped ≤0.9)
+	ContextSize    int     // context window override in tokens (0 = auto-detect); drives compression threshold
+	MaxOutputTokens int    // model output cap per call (0/negative = 32768); prevents truncation-mangled turns
 	Brand          Brand
 }
 
@@ -92,6 +93,7 @@ type Flags struct {
 	PromptCaching                                      bool
 	CompactRatio                                       float64
 	ContextSize                                        int
+	MaxOutputTokens                                    int
 }
 
 // Load resolves a Config from flags + env + TOML + defaults.
@@ -157,10 +159,15 @@ func Load(f Flags) (*Config, error) {
 	if cfg.CompactRatio < 0 {
 		cfg.CompactRatio = 0
 	}
-	if cfg.CompactRatio > 0.95 {
-		cfg.CompactRatio = 0.95
+	// upstream ContextConfig caps TriggerRatio at 0.9
+	if cfg.CompactRatio > 0.9 {
+		cfg.CompactRatio = 0.9
 	}
 	cfg.ContextSize = f.ContextSize
+	cfg.MaxOutputTokens = f.MaxOutputTokens
+	if cfg.MaxOutputTokens <= 0 {
+		cfg.MaxOutputTokens = 32768
+	}
 	if t.Brand.Name != "" {
 		cfg.Brand.Name = t.Brand.Name
 	}

@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/agentscope-ai/agentscope-go/v2 v2.0.12-0.20261013062152-55d0abf4112d
+	github.com/agentscope-ai/agentscope-go/v2 v2.0.12-0.20261017145805-77120982cfe9
 	github.com/spf13/cobra v1.10.2
 )
 

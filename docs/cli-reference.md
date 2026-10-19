@@ -76,7 +76,9 @@ Cobra also provides `--help` and `--version`.
 | `--resume` | string | Resume session by id |
 | `--continue` | bool | Continue newest session in this project (`--resume` wins if both given) |
 | `--prompt-caching` | bool | Anthropic prompt caching (system + tools). Anthropic only |
-| `--context-size` | int | Context-window override in tokens. **Consumed by the ollama provider only** |
+| `--context-size` | int | Context-window override in tokens — drives the auto-compression threshold for **all** providers (also passed to the ollama client) |
+| `--compact-ratio` | float | Auto-compression trigger ratio (0 = upstream default 0.8, clamped ≤ 0.9) |
+| `--max-output-tokens` | int | Model output cap per call (default 32768). Too-low caps truncate turns mid-tool-call and mangle the session |
 | `--config` | path \| `none` | Config TOML path; `none` skips config files entirely |
 
 #### Reserved flags (parsed, not yet wired)
@@ -92,7 +94,6 @@ runtime** — they await exported APIs in agentscope-go. Do not rely on them.
 | `--thinking-budget` | Thinking token budget |
 | `--effort` | Reasoning effort (`low` \| `medium` \| `high`) |
 | `--jail` | Confine file tools to cwd |
-| `--compact-ratio` | Auto-compact trigger ratio (auto-compaction is always active regardless) |
 
 ### Engine env vars
 

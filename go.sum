@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/agentscope-ai/agentscope-go/v2 v2.0.12-0.20261013062152-55d0abf4112d h1:l2hcni0XFxje0MTJqTk+uN4tBpwtbs5pruR3z4LGBqc=
-github.com/agentscope-ai/agentscope-go/v2 v2.0.12-0.20261013062152-55d0abf4112d/go.mod h1:0lMtYuNTdHEXrxzKnZXXYYdvFeRkFjk35trg//JHQ6M=
+github.com/agentscope-ai/agentscope-go/v2 v2.0.12-0.20261017145805-77120982cfe9 h1:VdoMlBn8ILFwsYg+BCbnlHiKwQcqWrEl5LsujxpTKPs=
+github.com/agentscope-ai/agentscope-go/v2 v2.0.12-0.20261017145805-77120982cfe9/go.mod h1:YyjVcx8wu3NMp7/C+h0wt442ISbNdt6O9qJVxrKQGac=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=

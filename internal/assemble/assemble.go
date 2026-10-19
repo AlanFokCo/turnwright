@@ -66,10 +66,11 @@ func ChatModel(cfg *config.Config) (model.ChatModel, error) {
 	switch cfg.Provider {
 	case "anthropic":
 		return model.NewAnthropicChatModel(&model.AnthropicConfig{
-			APIKey:        cfg.APIKey,
-			BaseURL:       cfg.BaseURL,
-			Model:         cfg.Model,
-			PromptCaching: cfg.PromptCaching,
+			APIKey:          cfg.APIKey,
+			BaseURL:         cfg.BaseURL,
+			Model:           cfg.Model,
+			PromptCaching:   cfg.PromptCaching,
+			MaxOutputTokens: cfg.MaxOutputTokens,
 		})
 	case "openai":
 		return model.NewOpenAIChatModel(model.OpenAIConfig{APIKey: cfg.APIKey, BaseURL: cfg.BaseURL, Model: cfg.Model})
@@ -148,6 +149,13 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 		agent.WithPermissionContext(pctx),
 		agent.WithReactConfig(agent.ReactConfig{MaxIters: cfg.MaxIters}),
 		agent.WithStateSaver(saver),
+		// Without ContextConfig the upstream auto-compression never arms
+		// (compressContextWithRatio no-ops on a nil config) — sessions would
+		// grow unbounded and get tail-truncated by provider proxies.
+		agent.WithContextConfig(&agent.ContextConfig{
+			TriggerRatio: cfg.CompactRatio, // 0 = upstream default 0.8
+			ContextSize:  cfg.ContextSize,  // 0 = auto-detect (model card / default)
+		}),
 		agent.WithAgentDrivenCompression(),
 	}
 	if len(skills) > 0 {

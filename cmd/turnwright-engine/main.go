@@ -91,7 +91,8 @@ func newRootCmd() *cobra.Command {
 	p.BoolVar(&f.Jail, "jail", false, "confine file tools to cwd")
 	p.BoolVar(&f.PromptCaching, "prompt-caching", false, "Anthropic prompt caching")
 	p.Float64Var(&f.CompactRatio, "compact-ratio", 0, "reserved: auto-compact ratio (pending agentscope-go export)")
-	p.IntVar(&f.ContextSize, "context-size", 0, "context window override in tokens")
+	p.IntVar(&f.ContextSize, "context-size", 0, "context window override in tokens (drives auto-compression threshold)")
+	p.IntVar(&f.MaxOutputTokens, "max-output-tokens", 0, "model output cap per call (default 32768)")
 	p.StringVar(&f.ConfigPath, "config", "", "config TOML path (\"none\" skips)")
 	return root
 }

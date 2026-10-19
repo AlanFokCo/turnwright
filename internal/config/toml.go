@@ -25,8 +25,9 @@ type TOMLFile struct {
 	Effort         string  `toml:"effort"`
 	Jail           bool    `toml:"jail"`
 	PromptCaching  bool    `toml:"prompt_caching"`
-	CompactRatio   float64 `toml:"compact_ratio"`
-	ContextSize    int     `toml:"context_size"`
+	CompactRatio    float64 `toml:"compact_ratio"`
+	ContextSize     int     `toml:"context_size"`
+	MaxOutputTokens int     `toml:"max_output_tokens"`
 	Brand          Brand   `toml:"brand"`
 	// Loaded reports whether the file was found and parsed (informational for
 	// /doctor). Not serialized.
@@ -115,6 +116,9 @@ func mergeTOMLIntoFlags(f Flags, t TOMLFile) Flags {
 	}
 	if f.ContextSize == 0 {
 		f.ContextSize = t.ContextSize
+	}
+	if f.MaxOutputTokens == 0 {
+		f.MaxOutputTokens = t.MaxOutputTokens
 	}
 	return f
 }
