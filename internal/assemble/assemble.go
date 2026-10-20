@@ -149,6 +149,10 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 		agent.WithPermissionContext(pctx),
 		agent.WithReactConfig(agent.ReactConfig{MaxIters: cfg.MaxIters}),
 		agent.WithStateSaver(saver),
+		// Proxy streams occasionally deliver garbled/truncated tool-call
+		// chunks ("incomplete tool arguments"); one retry usually yields a
+		// clean call instead of aborting the whole turn in front of the user.
+		agent.WithModelConfig(agent.ModelConfig{MaxRetries: 3, RetryDelay: 2 * time.Second}),
 		// Without ContextConfig the upstream auto-compression never arms
 		// (compressContextWithRatio no-ops on a nil config) — sessions would
 		// grow unbounded and get tail-truncated by provider proxies.
@@ -201,6 +205,21 @@ func SystemPrompt(cwd string, pc *asconfig.ProjectConfig) string {
 - Keep changes minimal and consistent with the codebase's existing style.
 - Verify with the project's own build/test commands before declaring done.
 - Be concise in replies: what changed, why, and what to check next.
+
+# Operating discipline
+- Verify, do not assume: after editing a file, re-read the changed region; after
+  resolving merge conflicts, confirm no conflict markers remain and the project
+  still builds/tests pass before reporting done.
+- Git divergence: inspect first (git status, git log of both sides), pick a
+  strategy explicitly (merge or rebase), and never re-run a failing pull blindly.
+- If a command fails, read the error and adapt; repeating the same command is not progress.
+- Merge conflicts, concretely: run git status --porcelain; for each unmerged
+  file read the conflict markers, decide the combined content, replace the
+  whole marked region with the edit tool (never commit with markers left),
+  git add the file, then finish the merge commit. Afterwards run git
+  diff --check and re-read each resolved file before declaring done.
+- When stuck, change approach: a different tool, a different command, or
+  reading the relevant file again.
 `)
 	if pc != nil && strings.TrimSpace(pc.Instructions) != "" {
 		b.WriteString("\n# Project instructions\n\n")
