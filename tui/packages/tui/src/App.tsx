@@ -10,13 +10,13 @@ import {
 } from "@opentui/core";
 import {
   type AgentEvent, type ApprovalRequest,
-  type ConfirmResult, type InitializeResult, type TuiClient,
+  type ConfirmResult, type ElicitationRequest, type ElicitResult, type InitializeResult, type TuiClient,
 } from "@turnwright/core";
 import { builtinTheme, loadTheme, type Theme } from "./theme.js";
 import {
   initialChatState, pushNotice, pushUser, reduce, type ChatState, type ReplyEntry,
 } from "./store.js";
-import { ApprovalDialog, MessageView, StatusLine, WelcomeHero } from "./components.js";
+import { ApprovalDialog, ElicitDialog, MessageView, PlanPanel, StatusLine, WelcomeHero } from "./components.js";
 import { ListPicker, type PickerItem } from "./pickers.js";
 import { completeSlash, SLASH_COMMANDS } from "./slash.js";
 import { completeAtPath, expandAtFiles } from "./atfile.js";
@@ -73,6 +73,8 @@ export function App({ client, info, resume, noAnim }: {
   const [model, setModel] = useState(info.model);
   const [permission, setPermission] = useState("accept_edits");
   const [approval, setApproval] = useState<ApprovalRequest | null>(null);
+  const [elicit, setElicit] = useState<ElicitationRequest | null>(null);
+  const elicitResolve = useRef<((r: ElicitResult) => void) | null>(null);
   const [picker, setPicker] = useState<Picker>(null);
   const [input, setInput] = useState("");
   const [branch, setBranch] = useState(() => gitBranch(info.cwd));
@@ -141,6 +143,13 @@ export function App({ client, info, resume, noAnim }: {
         new Promise((resolve) => {
           approvalResolve.current = resolve;
           setApproval(req);
+        }),
+    );
+    client.onElicitation?.(
+      (req) =>
+        new Promise<ElicitResult>((resolve) => {
+          elicitResolve.current = resolve;
+          setElicit(req);
         }),
     );
     const open = resume === "continue"
@@ -291,11 +300,12 @@ export function App({ client, info, resume, noAnim }: {
         return;
       }
       case "/compact":
-        setChat((st) => pushNotice(
-          st,
-          "manual /compact needs an exported API in agentscope-go; agent-driven and token-threshold auto-compact are already active",
-          "warn",
-        ));
+        try {
+          await client.sessionCompact(sessionId);
+          setChat((st) => pushNotice(st, "context compacted"));
+        } catch (e) {
+          setChat((st) => pushNotice(st, `compact: ${(e as Error).message}`, "error"));
+        }
         return;
       default:
         setChat((st) => pushNotice(st, `unknown command: ${name} (try /help)`, "warn"));
@@ -315,9 +325,19 @@ export function App({ client, info, resume, noAnim }: {
   const submit = useCallback(
     (raw: string) => {
       const t = raw.trim();
-      if (!t || !sessionId || chat.busy) return;
+      if (!t || !sessionId) return;
       if (t.startsWith("/")) {
         void handleSlash(t);
+        return;
+      }
+      // `!command` runs a user shell command outside the model loop (codex
+      // `!` parity): output streams back as user_shell_* events and never
+      // enters the model's context.
+      if (t.startsWith("!")) {
+        const command = t.slice(1).trim();
+        if (!command) return;
+        client.sessionUserShell(sessionId, command)
+          .catch((e) => setChat((st) => pushNotice(st, `shell: ${e.message}`, "error")));
         return;
       }
       const { text, missing } = expandAtFiles(t, info.cwd);
@@ -325,11 +345,41 @@ export function App({ client, info, resume, noAnim }: {
         setChat((st) => pushNotice(st, `@${m} not found`, "warn"));
       }
       setChat((st) => pushUser(st, t));
-      client.turnStart(sessionId, text).catch((e) =>
-        setChat((st) => pushNotice(st, `turn: ${e.message}`, "error")),
-      );
+      // Submitting while a turn runs steers the input into it at the next
+      // safe boundary (engine queues it); the user keeps typing freely.
+      client.turnStart(sessionId, text)
+        .then((r) => {
+          if (r.queued) {
+            setChat((st) => pushNotice(st, "queued — steered into the running turn", "info"));
+          }
+        })
+        .catch((e) => setChat((st) => pushNotice(st, `turn: ${e.message}`, "error")));
     },
-    [client, sessionId, chat.busy, handleSlash, info.cwd],
+    [client, sessionId, handleSlash, info.cwd],
+  );
+
+  // MCP elicitation answers: accept submits the input-box text mapped onto
+  // the requested schema (single string property by name, else "value");
+  // decline tells the server the user refused.
+  const answerElicit = useCallback(
+    (accept: boolean) => {
+      const resolve = elicitResolve.current;
+      if (!elicit || !resolve) return;
+      elicitResolve.current = null;
+      setElicit(null);
+      if (!accept) {
+        resolve({ action: "decline" });
+        return;
+      }
+      const answer = (inputRef.current?.plainText ?? "").trim();
+      setInputValue("");
+      const schema = elicit.requested_schema as { properties?: Record<string, { type?: string }> } | undefined;
+      const key = schema?.properties
+        ? Object.keys(schema.properties).find((k) => schema.properties![k]?.type === "string")
+        : undefined;
+      resolve({ action: "accept", content: { [key ?? "value"]: answer } });
+    },
+    [elicit, setInputValue],
   );
 
   // completions: trailing @path or leading /command
@@ -351,7 +401,7 @@ export function App({ client, info, resume, noAnim }: {
   const onInputKeyDown = useCallback((key: KeyEvent) => {
     if (key.name === "return" && !key.shift && !key.ctrl && !key.meta) {
       const v = inputRef.current?.plainText ?? "";
-      if (!v.trim() || !sessionId || chat.busy) return;
+      if (!v.trim() || !sessionId) return;
       key.preventDefault();
       setInputValue("");
       const h = historyRef.current;
@@ -405,12 +455,18 @@ export function App({ client, info, resume, noAnim }: {
       return;
     }
     if (!vimNormalMotions.has(key.name)) key.preventDefault();
-  }, [sessionId, chat.busy, submit, setInputValue, vimEnabled, vimMode]);
+  }, [sessionId, submit, setInputValue, vimEnabled, vimMode]);
 
   useKeyboard((key) => {
     if (picker) {
       if (key.name === "escape") setPicker(null);
       return; // select handles its own keys
+    }
+    // ESC interrupts the running turn (codex muscle memory); pending input
+    // is retained by the engine and drives the next turn.
+    if (key.name === "escape" && chat.busy && sessionId && !approval) {
+      void client.turnCancel(sessionId);
+      return;
     }
     if (key.ctrl && key.name === "c") {
       if (chat.busy && sessionId) {
@@ -429,6 +485,9 @@ export function App({ client, info, resume, noAnim }: {
       if (key.name === "y") answerApproval("once");
       else if (key.name === "n") answerApproval("deny");
       else if (key.name === "a") answerApproval("always");
+    } else if (elicit) {
+      if (key.name === "y") answerElicit(true);
+      else if (key.name === "n") answerElicit(false);
     }
   });
 
@@ -476,6 +535,10 @@ export function App({ client, info, resume, noAnim }: {
         <box height={1} />
       </scrollbox>
       {approval && <ApprovalDialog toolCalls={approval.tool_calls} theme={theme} />}
+      {elicit && <ElicitDialog message={elicit.message} theme={theme} />}
+      {chat.plan && chat.plan.steps.length > 0 && !approval && !elicit && !picker && (
+        <PlanPanel plan={chat.plan} theme={theme} />
+      )}
       {picker && (
         <ListPicker
           title={picker.kind}
@@ -501,8 +564,12 @@ export function App({ client, info, resume, noAnim }: {
           onCursorChange={(e: { line: number }) => { cursorLineRef.current = e.line; }}
           onKeyDown={onInputKeyDown}
           keyBindings={vimEnabled && vimMode === "normal" ? vimNormalBindings : insertBindings}
-          placeholder={approval ? "answer the approval above (y/n/a)" : `ask ${brand.name}…  (/help)`}
-          focused={!approval && !picker}
+          placeholder={
+            approval ? "answer the approval above (y/n/a)"
+            : elicit ? "type your answer, then y to submit (n declines)"
+            : `ask ${brand.name}…  (/help · !shell · @file)`
+          }
+          focused={!approval && !elicit && !picker}
           minHeight={1}
           maxHeight={8}
         />

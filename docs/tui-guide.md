@@ -10,11 +10,13 @@ tok/s · session).
 
 | Key | Action |
 |---|---|
-| `enter` | Send the input (ignored while a turn is running or input is empty) |
+| `enter` | Send the input. While a turn is running the input is **queued and steered** into it at the next safe boundary — keep typing |
+| `!command` | Run a shell command yourself, outside the model loop: output streams into the transcript (never into the model's context) and shows the exit code. The permission engine is bypassed — you typed it, it's authorized |
 | `shift+enter`, `ctrl+j` | Newline (`shift+enter` only on terminals that report it) |
 | `up` / `down` | Prompt history — walks from the first/last line of the buffer |
 | `tab` | Accept the first completion candidate (slash commands at line start, `@paths` at a trailing `@`) |
 | `pageup` / `pagedown` | Scroll the transcript ±20 lines |
+| `esc` | While busy: **interrupt the running turn** (in-flight tools are killed; pending input is retained and drives the next turn) |
 | `ctrl+c` | While busy: cancel the current turn. While idle: quit |
 | `y` / `n` / `a` | Approval dialog: allow once / deny / always |
 | `↑` `↓` `enter` `esc` | List pickers (sessions, model, theme): move / select / cancel |
@@ -37,7 +39,7 @@ the start of a line.
 | `/permission <mode>` | Set permission mode; no argument prints the current mode and the five options |
 | `/status` | Session id, model, permission mode, cwd |
 | `/vim [on\|off]` | Toggle vim keybindings (no argument toggles) |
-| `/compact` | *Stub* — prints a notice. Manual compaction awaits an upstream agentscope-go API; **automatic compaction is always active** (see below) |
+| `/compact` | Compact the context **now**. Runs a forced compression: immediately between turns, or queued behind a running turn's safe boundary. Automatic compaction remains active regardless (see below) |
 | `/clear` | Clear the conversation **view** only — the agent's context is untouched |
 | `/quit` | Exit (alias: `/exit`, not listed in `/help`) |
 
@@ -77,8 +79,29 @@ When a tool call needs confirmation the dialog shows the tool name and input:
 - `y` — allow this call once
 - `n` — deny this call (the agent sees the denial and adapts)
 - `a` — allow **always**: the suggested permission rules attached to the call
-  are accepted for the rest of the session, so matching future calls pass
-  silently
+  are accepted and **persisted** to the project's
+  `.agentscope/settings.local.json`, so matching future calls pass silently —
+  including in later sessions (the file is local-only on purpose; commit
+  `.agentscope/settings.json` if you want shared rules)
+
+### MCP elicitation
+
+An MCP server can ask for input mid tool call ("Server requests input"):
+type your answer and press `y` to submit it (mapped onto the requested form),
+or `n` to decline. While the dialog is open, other calls to the same stdio
+server queue behind it.
+
+## The plan panel
+
+During multi-step work the model maintains a visible step plan (`update_plan`
+tool): steps with status icons (pending / in progress / done) render in a
+bordered panel above the input, live. The plan lives in the session state —
+it survives compaction and crash-resume, and the model re-reads it on every
+call. It clears when the model marks every step complete or cancels the plan.
+
+Bash/Shell rules match **conjunctively across subcommands**: an allow rule
+covers a compound command only when *every* subcommand matches the rule set,
+so `git status && rm -rf /` never rides along on a `git` allow.
 
 ## `@file` references
 
@@ -145,7 +168,7 @@ indicator appears in the status line and the cursor becomes a block.
 
 ## Auto-compaction
 
-Two compression layers are active:
+Three compression layers are active:
 
 - **Automatic, token-threshold**: when the transcript passes
   `compact_ratio` (default 0.8) of the context window (`context_size`,
@@ -153,16 +176,22 @@ Two compression layers are active:
   summary persists in the session.
 - **Agent-driven**: the agent may compress on its own initiative between
   thresholds.
+- **Manual**: `/compact` forces a compression right now — immediate between
+  turns, queued behind a running turn otherwise.
 
-Manual `/compact` remains a stub pending an upstream export — with the two
-automatic layers you don't need it. Long sessions stay inside the window
-instead of being tail-truncated by the provider.
+Long sessions stay inside the window instead of being tail-truncated by the
+provider. If the context still overflows (a huge tool result late in a
+turn), the engine recovers: it truncates the oversized tool result, forces a
+summarizing compaction and retries the step — surfaced as a
+`context overflow recovered` notice.
 
 ## Status line
 
 Slots, left to right (default order): `busy`, `model`, `branch`, `permission`,
 `tokens` (↑in ↓out), `toks` (tok/s), `session` (id prefix). Reorder or trim
-them with `[brand] status` in config.
+them with `[brand] status` in config. Token counts update per model call and
+are finalized from the engine's authoritative per-reply `turn_stats` (which
+also accounts compression usage the streaming deltas miss).
 
 <!-- src: tui/packages/tui/src/components.tsx StatusLine -->
 

@@ -33,8 +33,8 @@ type Brand struct {
 	Name    string   `toml:"name" json:"name"`
 	Tagline string   `toml:"tagline" json:"tagline"`
 	Accent  string   `toml:"accent" json:"accent"` // hex color, e.g. "#F59E0B"
-	Logo    []string `toml:"logo" json:"logo"`   // ASCII art, one string per line
-	Theme   string   `toml:"theme" json:"theme"` // default theme name
+	Logo    []string `toml:"logo" json:"logo"`     // ASCII art, one string per line
+	Theme   string   `toml:"theme" json:"theme"`   // default theme name
 	// Status orders the status-line slots; empty = default layout.
 	// Known slots: busy, model, branch, permission, tokens, toks, session.
 	Status []string `toml:"status" json:"status,omitempty"`
@@ -44,12 +44,12 @@ type Brand struct {
 func DefaultBrand() Brand {
 	return Brand{
 		Name:    "turnwright",
-	Tagline: "shape your code at the lathe",
+		Tagline: "shape your code at the lathe",
 		Accent:  "#F59E0B",
 		Logo: []string{
-		"┌┬┐ ┬ ┬",
-		" │  │││",
-		" ┴  └┴┘",
+			"┌┬┐ ┬ ┬",
+			" │  │││",
+			" ┴  └┴┘",
 		},
 		Theme: "turnwright-dark",
 	}
@@ -57,43 +57,48 @@ func DefaultBrand() Brand {
 
 // Config is the resolved runtime configuration.
 type Config struct {
-	Provider   string // anthropic | openai | dashscope | deepseek | gemini | moonshot | kimi | xai | ollama
-	Model      string
-	APIKey     string
-	BaseURL    string
-	Permission string // default | accept_edits | explore | bypass | dont_ask
-	Output     Output
-	MaxIters   int
-	Prompt     string
-	Resume     string
-	Continue   bool
-	Thinking       bool   // enable extended thinking / reasoning
-	ThinkingBudget int    // thinking token budget (0 = provider default)
-	ReasoningEffort string // "low"|"medium"|"high"; "" = provider default
-	Jail           bool   // confine file tools to cwd
-	PromptCaching  bool   // Anthropic prompt caching (system + tools)
-	CompactRatio   float64 // trigger ratio for auto-compression (0 = upstream default 0.8; clamped ≤0.9)
-	ContextSize    int     // context window override in tokens (0 = auto-detect); drives compression threshold
-	MaxOutputTokens int    // model output cap per call (0/negative = 32768); prevents truncation-mangled turns
-	Brand          Brand
+	Provider           string // anthropic | openai | dashscope | deepseek | gemini | moonshot | kimi | xai | ollama
+	Model              string
+	APIKey             string
+	BaseURL            string
+	Permission         string // default | accept_edits | explore | bypass | dont_ask
+	Output             Output
+	MaxIters           int
+	Prompt             string
+	Resume             string
+	Continue           bool
+	Thinking           bool    // enable extended thinking / reasoning
+	ThinkingBudget     int     // thinking token budget (0 = provider default)
+	ReasoningEffort    string  // "low"|"medium"|"high"; "" = provider default
+	Jail               bool    // confine file tools to cwd
+	PromptCaching      bool    // Anthropic prompt caching (system + tools)
+	CompactRatio       float64 // trigger ratio for auto-compression (0 = upstream default 0.8; clamped ≤0.9)
+	CompactPrecompress float64 // background pre-compression ratio, must be < CompactRatio (0 = off)
+	ContextSize        int     // context window override in tokens (0 = auto-detect); drives compression threshold
+	MaxOutputTokens    int     // model output cap per call (0/negative = 32768); prevents truncation-mangled turns
+	SearchURL          string  // web_search backend base URL; "" disables the web_search tool
+	SearchAPIKey       string  // optional bearer token for the search backend
+	Brand              Brand
 }
 
 // Flags holds CLI overrides; empty fields are unset.
 type Flags struct {
-	ConfigPath                                         string // "" = DefaultTOMLPath(); "none" = skip
-	Provider, Model, APIKey, BaseURL, Permission       string
-	Output, Prompt                                     string
-	MaxIters                                           int
-	Resume                                             string
-	Continue                                           bool
-	Thinking                                           bool
-	ThinkingBudget                                     int
-	Effort                                             string
-	Jail                                               bool
-	PromptCaching                                      bool
-	CompactRatio                                       float64
-	ContextSize                                        int
-	MaxOutputTokens                                    int
+	ConfigPath                                   string // "" = DefaultTOMLPath(); "none" = skip
+	Provider, Model, APIKey, BaseURL, Permission string
+	Output, Prompt                               string
+	MaxIters                                     int
+	Resume                                       string
+	Continue                                     bool
+	Thinking                                     bool
+	ThinkingBudget                               int
+	Effort                                       string
+	Jail                                         bool
+	PromptCaching                                bool
+	CompactRatio                                 float64
+	CompactPrecompress                           float64
+	ContextSize                                  int
+	MaxOutputTokens                              int
+	SearchURL, SearchAPIKey                      string
 }
 
 // Load resolves a Config from flags + env + TOML + defaults.
@@ -164,6 +169,18 @@ func Load(f Flags) (*Config, error) {
 		cfg.CompactRatio = 0.9
 	}
 	cfg.ContextSize = f.ContextSize
+	cfg.CompactPrecompress = f.CompactPrecompress
+	if cfg.CompactPrecompress < 0 {
+		cfg.CompactPrecompress = 0
+	}
+	cfg.SearchURL = os.Getenv("TURNWRIGHT_SEARCH_URL")
+	if cfg.SearchURL == "" {
+		cfg.SearchURL = f.SearchURL
+	}
+	cfg.SearchAPIKey = os.Getenv("TURNWRIGHT_SEARCH_API_KEY")
+	if cfg.SearchAPIKey == "" {
+		cfg.SearchAPIKey = f.SearchAPIKey
+	}
 	cfg.MaxOutputTokens = f.MaxOutputTokens
 	if cfg.MaxOutputTokens <= 0 {
 		cfg.MaxOutputTokens = 32768

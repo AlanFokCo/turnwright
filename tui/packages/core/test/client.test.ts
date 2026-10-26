@@ -20,7 +20,7 @@ rl.on("line", (line) => {
   const m = JSON.parse(line);
   if (m.method === "initialize") {
     process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: m.id, result: {
-      protocolVersion: 1, version: "fake", cwd: "/tmp",
+      protocolVersion: 2, version: "fake", cwd: "/tmp",
       brand: { name: "t", tagline: "", accent: "#fff", logo: [], theme: "" },
       provider: "fake", model: "fake", capabilities: {},
     } }) + "\\n");
@@ -30,7 +30,7 @@ rl.on("line", (line) => {
 });
 `;
 
-const WRONG_VERSION = HELLO.replace("protocolVersion: 1", "protocolVersion: 99");
+const WRONG_VERSION = HELLO.replace("protocolVersion: 2", "protocolVersion: 99");
 
 describe("EngineClient", () => {
   test("initialize handshake resolves info", async () => {

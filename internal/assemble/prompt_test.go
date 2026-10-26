@@ -19,3 +19,19 @@ func TestSystemPromptCarriesOperatingDiscipline(t *testing.T) {
 		}
 	}
 }
+
+// The prompt must teach the persistent-shell session semantics (cd once,
+// poll with ShellStdin) — without them models re-prefix every command and
+// wait blindly on long-running commands.
+func TestSystemPromptTeachesPersistentShell(t *testing.T) {
+	p := SystemPrompt("/tmp", nil)
+	for _, want := range []string{
+		"persistent session",
+		"cd once",
+		"ShellStdin",
+	} {
+		if !strings.Contains(p, want) {
+			t.Fatalf("SystemPrompt missing shell guidance %q", want)
+		}
+	}
+}

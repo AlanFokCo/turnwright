@@ -25,8 +25,8 @@ class FakeClient extends EventEmitter {
   async sessionList() { return { sessions: [] }; }
   async sessionDelete() {}
   async sessionClose() {}
-  async turnStart() {}
-  async turnCancel() {}
+  async turnStart() { return { started: true }; }
+  async turnCancel() { return { cancelled: false }; }
   async modelSet() { return { model: "m" }; }
   async modelList() { return { models: [], provider: "fake", current: "fake" }; }
   async sessionSetPermission() {}

@@ -1,6 +1,6 @@
-/** Line-delimited Control Protocol (LCP) v1 — shared types between engine and TUI. */
+/** Line-delimited Control Protocol (LCP) v2 — shared types between engine and TUI. */
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export interface Brand {
   name: string;
@@ -47,6 +47,9 @@ export interface AgentEvent {
   error?: { message: string };
   message?: string;
   tool_calls?: ToolCallBlock[];
+  /** Custom events (compacted, steering, interrupt, overflow recovery). */
+  name?: string;
+  value?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -92,4 +95,36 @@ export interface ConfigSnapshot {
   maxIters: number;
   cwd: string;
   brand: Brand;
+}
+
+/** turn/start result: input accepted; queued = steered into a running turn. */
+export interface TurnStartResult {
+  started: boolean;
+  queued?: boolean;
+}
+
+/** session/compact result. */
+export interface SessionCompactResult {
+  compacted: boolean;
+}
+
+/** session/user_shell result: the command id correlating the user_shell_* events. */
+export interface UserShellResult {
+  commandId: string;
+}
+
+/** MCP elicitation request: a server asks the user for input mid tool call. */
+export interface ElicitationRequest {
+  session_id: string;
+  message: string;
+  /** JSON Schema for the requested form data; absent when the server sent none. */
+  requested_schema?: unknown;
+}
+
+/** Client's answer to an elicitation request. */
+export interface ElicitResult {
+  /** "accept" | "decline" | "cancel" */
+  action: string;
+  /** Submitted form data; sent to the server only on accept. */
+  content?: Record<string, unknown>;
 }

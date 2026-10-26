@@ -5,7 +5,7 @@ import React from "react";
 import { EventEmitter } from "node:events";
 import { createTestRenderer, type TestRendererSetup } from "@opentui/core/testing";
 import { createRoot, type Root } from "@opentui/react";
-import type { AgentEvent, ApprovalRequest, ConfirmResult, InitializeResult } from "@turnwright/core";
+import type { AgentEvent, ApprovalRequest, ConfirmResult, InitializeResult, TurnStartResult } from "@turnwright/core";
 import { App } from "../src/App.js";
 
 const fakeInfo: InitializeResult = {
@@ -33,7 +33,7 @@ class FakeClient extends EventEmitter {
   async sessionList() { return { sessions: [{ session_id: "s-old-1", summary: "old chat" }] }; }
   async sessionDelete() {}
   async sessionClose() {}
-  async turnStart(_sid: string, input: string) {
+  async turnStart(_sid: string, input: string): Promise<TurnStartResult> {
     this.lastInput = input;
     this.turnStarted++;
     queueMicrotask(() => {
@@ -46,6 +46,7 @@ class FakeClient extends EventEmitter {
       ];
       for (const e of evs) this.emit("event", e);
     });
+    return { started: true };
   }
   async turnCancel() {}
   async modelSet(_sid: string, model: string) { return { model }; }
@@ -143,7 +144,7 @@ describe("App", () => {
   });
 
   test("approval dialog answers y", async () => {
-    client.turnStart = async () => {
+    client.turnStart = async (): Promise<TurnStartResult> => {
       queueMicrotask(async () => {
         client.emit("event", { type: "reply_start", session_id: "s-test-0001", reply_id: "r9" });
         const result = await client.approval!({
@@ -153,6 +154,7 @@ describe("App", () => {
         expect(result.confirmResults[0]?.confirmed).toBe(true);
         client.emit("event", { type: "reply_end", session_id: "s-test-0001", reply_id: "r9" });
       });
+      return { started: true };
     };
     await type("delete it");
     await enter();

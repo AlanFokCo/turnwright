@@ -12,9 +12,11 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/agent"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/event"
+	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/mcp"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/model"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/permission"
 
@@ -25,7 +27,7 @@ import (
 )
 
 // ProtocolVersion is negotiated in initialize; bump on breaking changes.
-const ProtocolVersion = 1
+const ProtocolVersion = 2
 
 type wireMessage struct {
 	JSONRPC string          `json:"jsonrpc"`
@@ -41,17 +43,23 @@ type wireError struct {
 	Message string `json:"message"`
 }
 
+// sessionState drives one session through an agentscope Conversation kernel:
+// turns run on the conversation's persistent event stream, so user input can
+// be queued mid-turn (steering) and a running turn can be interrupted.
 type sessionState struct {
-	h      *assemble.Handle
-	mu     sync.Mutex // one turn at a time
-	cancel context.CancelFunc
-	closed bool
+	h          *assemble.Handle
+	conv       *agent.Conversation
+	sctx       context.Context    // session lifetime (drain loop, approvals)
+	cancel     context.CancelFunc // cancels sctx
+	mu         sync.Mutex         // guards turn activity, closed, agent swap
+	turnActive bool
+	closed     bool
 }
 
 // Server is the LCP stdio server.
 type Server struct {
-	cfg *config.Config
-	cwd string
+	cfg      *config.Config
+	cwd      string
 	newModel func(*config.Config) (model.ChatModel, error)
 
 	dec *json.Decoder
@@ -75,7 +83,7 @@ func NewServer(cfg *config.Config, cwd string, r io.Reader, w io.Writer) *Server
 // hermetic tests use to inject agenttest.MockModel.
 func NewServerWithModel(cfg *config.Config, cwd string, r io.Reader, w io.Writer, mf func(*config.Config) (model.ChatModel, error)) *Server {
 	if mf == nil {
-		mf = assemble.ChatModel
+		mf = assemble.ChatModelDumped // honors TURNWRIGHT_WIRE_DUMP for wire debugging
 	}
 	return &Server{
 		cfg:      cfg,
@@ -124,7 +132,9 @@ func (s *Server) handleRequest(ctx context.Context, msg wireMessage) {
 	case "session/new":
 		result, err = s.sessionNew(ctx)
 	case "session/resume":
-		var p struct{ SessionID string `json:"sessionId"` }
+		var p struct {
+			SessionID string `json:"sessionId"`
+		}
 		if e := json.Unmarshal(msg.Params, &p); e != nil || p.SessionID == "" {
 			err = errInvalidParams
 			break
@@ -135,14 +145,18 @@ func (s *Server) handleRequest(ctx context.Context, msg wireMessage) {
 	case "session/list":
 		result, err = s.sessionList(ctx)
 	case "session/delete":
-		var p struct{ SessionID string `json:"sessionId"` }
+		var p struct {
+			SessionID string `json:"sessionId"`
+		}
 		if e := json.Unmarshal(msg.Params, &p); e != nil || p.SessionID == "" {
 			err = errInvalidParams
 			break
 		}
 		result, err = s.sessionDelete(ctx, p.SessionID)
 	case "session/close":
-		var p struct{ SessionID string `json:"sessionId"` }
+		var p struct {
+			SessionID string `json:"sessionId"`
+		}
 		if e := json.Unmarshal(msg.Params, &p); e != nil || p.SessionID == "" {
 			err = errInvalidParams
 			break
@@ -160,12 +174,34 @@ func (s *Server) handleRequest(ctx context.Context, msg wireMessage) {
 		}
 		result, err = s.turnStart(ctx, p.SessionID, p.Input)
 	case "turn/cancel":
-		var p struct{ SessionID string `json:"sessionId"` }
+		var p struct {
+			SessionID string `json:"sessionId"`
+		}
 		if e := json.Unmarshal(msg.Params, &p); e != nil || p.SessionID == "" {
 			err = errInvalidParams
 			break
 		}
 		result, err = s.turnCancel(p.SessionID)
+	case "session/compact":
+		var p struct {
+			SessionID string `json:"sessionId"`
+		}
+		if e := json.Unmarshal(msg.Params, &p); e != nil || p.SessionID == "" {
+			err = errInvalidParams
+			break
+		}
+		result, err = s.sessionCompact(ctx, p.SessionID)
+	case "session/user_shell":
+		var p struct {
+			SessionID string `json:"sessionId"`
+			Command   string `json:"command"`
+			TimeoutMs int    `json:"timeoutMs"`
+		}
+		if e := json.Unmarshal(msg.Params, &p); e != nil || p.SessionID == "" || p.Command == "" {
+			err = errInvalidParams
+			break
+		}
+		result, err = s.userShell(p.SessionID, p.Command, p.TimeoutMs)
 	case "model/set":
 		var p struct {
 			SessionID string `json:"sessionId"`
@@ -220,6 +256,7 @@ func (s *Server) initializeResult() map[string]any {
 		"capabilities": map[string]bool{
 			"approval": true, "sessions": true, "modelSet": true,
 			"streaming": true, "thinking": true,
+			"steering": true, "interrupt": true, "compact": true,
 		},
 	}
 }
@@ -237,7 +274,10 @@ func (s *Server) sessionNew(ctx context.Context) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.addSession(h)
+	if err := s.addSession(h); err != nil {
+		h.Close()
+		return nil, err
+	}
 	return map[string]any{"sessionId": h.SessionID}, nil
 }
 
@@ -253,7 +293,10 @@ func (s *Server) sessionResume(ctx context.Context, id string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.addSession(h)
+	if err := s.addSession(h); err != nil {
+		h.Close()
+		return nil, fmt.Errorf("resume session %s: %w", id, err)
+	}
 	return map[string]any{"sessionId": id, "resumed": true}, nil
 }
 
@@ -296,10 +339,23 @@ func (s *Server) sessionDelete(ctx context.Context, id string) (any, error) {
 	return map[string]any{"deleted": id}, nil
 }
 
-func (s *Server) addSession(h *assemble.Handle) {
+// addSession registers an assembled agent as a conversation-driven session
+// and starts its persistent event drain. The conversation owns turn
+// serialization: Submit queues during an active turn (steering), Interrupt
+// aborts it, Compact runs at a safe boundary.
+func (s *Server) addSession(h *assemble.Handle) error {
+	conv, err := h.Agent.NewConversation(context.Background())
+	if err != nil {
+		return err
+	}
+	sctx, cancel := context.WithCancel(context.Background())
+	st := &sessionState{h: h, conv: conv, sctx: sctx, cancel: cancel}
+	h.Elicit = s.elicitFor(st, h.SessionID)
 	s.sessionsMu.Lock()
 	defer s.sessionsMu.Unlock()
-	s.sessions[h.SessionID] = &sessionState{h: h}
+	s.sessions[h.SessionID] = st
+	go s.drainSession(h.SessionID, st)
+	return nil
 }
 
 func (s *Server) getSession(id string) (*sessionState, bool) {
@@ -316,13 +372,17 @@ func (s *Server) closeSession(id string) {
 		delete(s.sessions, id)
 	}
 	s.sessionsMu.Unlock()
-	if ok {
-		if st.cancel != nil {
-			st.cancel()
-		}
-		st.closed = true
-		st.h.Close()
+	if !ok {
+		return
 	}
+	st.mu.Lock()
+	st.closed = true
+	st.mu.Unlock()
+	// Close interrupts any active turn, stops the conversation and closes the
+	// events channel (which ends the drain loop).
+	_ = st.conv.Close()
+	st.cancel()
+	st.h.Close()
 }
 
 func (s *Server) closeAll() {
@@ -341,52 +401,103 @@ func (s *Server) closeAll() {
 // turns
 // ---------------------------------------------------------------------------
 
+// turnStart queues user input on the session's conversation. With no active
+// turn a new one starts; during a turn the input is steered into it at the
+// next safe boundary (never splitting a tool_call/tool_result pair).
 func (s *Server) turnStart(ctx context.Context, sessionID, input string) (any, error) {
 	st, ok := s.getSession(sessionID)
 	if !ok {
 		return nil, fmt.Errorf("unknown session %q", sessionID)
 	}
-	if !st.mu.TryLock() {
-		return nil, errors.New("session busy: a turn is already running")
+	st.mu.Lock()
+	closed, busy := st.closed, st.turnActive
+	st.mu.Unlock()
+	if closed {
+		return nil, fmt.Errorf("session %q is closed", sessionID)
 	}
-	turnCtx, cancel := context.WithCancel(context.Background())
-	st.cancel = cancel
-	go s.runTurn(turnCtx, st, sessionID, input)
-	return map[string]any{"started": true}, nil
+	if err := st.conv.Submit(input); err != nil {
+		return nil, err
+	}
+	return map[string]any{"started": true, "queued": busy}, nil
 }
 
-func (s *Server) runTurn(ctx context.Context, st *sessionState, sessionID, input string) {
-	defer st.mu.Unlock()
-	defer func() { st.cancel = nil }()
-
-	ch, err := st.h.Agent.ReplyStream(ctx, input)
-	if err != nil {
-		s.notifyEventError(sessionID, err)
-		return
-	}
-	for e := range ch {
-		if rc, ok := e.(event.RequireUserConfirmEvent); ok {
-			// Approval roundtrip runs alongside the drain loop; the agent
-			// blocks in waitForConfirmation until SubmitUserConfirm lands.
-			go s.requestApproval(ctx, sessionID, rc)
-		}
-		s.notifyEvent(sessionID, e)
-	}
-}
-
+// turnCancel interrupts the active turn (in-flight tool processes are killed,
+// pending input is retained for the next turn, and the model sees an
+// interruption marker). It reports whether a turn was running.
 func (s *Server) turnCancel(sessionID string) (any, error) {
 	st, ok := s.getSession(sessionID)
 	if !ok {
 		return nil, fmt.Errorf("unknown session %q", sessionID)
 	}
-	if st.cancel != nil {
-		st.cancel()
-	}
-	return map[string]any{"cancelled": true}, nil
+	interrupted := st.conv.Interrupt()
+	return map[string]any{"cancelled": interrupted}, nil
 }
 
-// sessionSetPermission mutates the live permission context between turns.
-// Safe because turns are serialized per session (st.mu held during a turn).
+// sessionCompact forces a context compression: queued behind the active
+// turn's safe boundary when a turn runs, immediate otherwise.
+func (s *Server) sessionCompact(ctx context.Context, sessionID string) (any, error) {
+	st, ok := s.getSession(sessionID)
+	if !ok {
+		return nil, fmt.Errorf("unknown session %q", sessionID)
+	}
+	if err := st.conv.Compact(ctx); err != nil {
+		return nil, err
+	}
+	return map[string]any{"compacted": true}, nil
+}
+
+// userShell runs a user-typed command outside the model loop (codex `!`
+// parity): output streams as user_shell_output events, user_shell_end carries
+// the exit code. User-typed = authorized: the permission engine is bypassed
+// by design, and the command never enters model context. Model-generated
+// commands must go through turn/start instead.
+func (s *Server) userShell(sessionID, command string, timeoutMs int) (any, error) {
+	st, ok := s.getSession(sessionID)
+	if !ok {
+		return nil, fmt.Errorf("unknown session %q", sessionID)
+	}
+	st.mu.Lock()
+	closed := st.closed
+	st.mu.Unlock()
+	if closed {
+		return nil, fmt.Errorf("session %q is closed", sessionID)
+	}
+	timeout := time.Duration(timeoutMs) * time.Millisecond
+	commandID, err := st.conv.RunUserShellCommand(command, timeout)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"commandId": commandID}, nil
+}
+
+// drainSession forwards the conversation's persistent event stream to the
+// client for the session's whole lifetime, tracking turn activity and
+// routing approval requests. The loop exits when the conversation closes.
+func (s *Server) drainSession(sessionID string, st *sessionState) {
+	for e := range st.conv.Events() {
+		if rc, ok := e.(event.RequireUserConfirmEvent); ok {
+			// Approval roundtrip runs alongside the drain loop; the agent
+			// blocks in waitForConfirmation until SubmitUserConfirm lands.
+			// The session ctx (not a turn ctx) bounds the wait so a pending
+			// approval survives an interrupt but not a session close.
+			go s.requestApproval(st.sctx, sessionID, rc)
+		}
+		switch e.(type) {
+		case event.ReplyStartEvent:
+			st.mu.Lock()
+			st.turnActive = true
+			st.mu.Unlock()
+		case event.ReplyEndEvent:
+			st.mu.Lock()
+			st.turnActive = false
+			st.mu.Unlock()
+		}
+		s.notifyEvent(sessionID, e)
+	}
+}
+
+// sessionSetPermission mutates the live permission context. The engine takes
+// its own lock per tool call, so a mode change applies from the next check.
 func (s *Server) sessionSetPermission(sessionID, mode string) (any, error) {
 	st, ok := s.getSession(sessionID)
 	if !ok {
@@ -424,14 +535,23 @@ func (s *Server) modelList() any {
 
 // modelSet swaps the model of a live session. UnifiedAgent exposes no
 // SetModel, so turnwright re-assembles the agent over the checkpointed state —
-// a pure assembly-layer operation.
+// a pure assembly-layer operation. The conversation must be closed and
+// recreated around the new agent; a turn in flight refuses the switch.
 func (s *Server) modelSet(ctx context.Context, sessionID, modelName string) (any, error) {
 	st, ok := s.getSession(sessionID)
 	if !ok {
 		return nil, fmt.Errorf("unknown session %q", sessionID)
 	}
 	st.mu.Lock()
-	defer st.mu.Unlock()
+	if st.closed {
+		st.mu.Unlock()
+		return nil, fmt.Errorf("session %q is closed", sessionID)
+	}
+	if st.turnActive {
+		st.mu.Unlock()
+		return nil, errors.New("session busy: switch models between turns")
+	}
+	st.mu.Unlock()
 
 	newCfg := *s.cfg
 	newCfg.Model = modelName
@@ -443,8 +563,21 @@ func (s *Server) modelSet(ctx context.Context, sessionID, modelName string) (any
 	if err != nil {
 		return nil, err
 	}
+	conv, err := h.Agent.NewConversation(st.sctx)
+	if err != nil {
+		h.Close()
+		return nil, err
+	}
+	h.Elicit = s.elicitFor(st, sessionID)
+	// End the old conversation (drain loop exits with its closed channel),
+	// then swap handle + conversation under the lock.
+	_ = st.conv.Close()
+	st.mu.Lock()
 	st.h.Close()
 	st.h = h
+	st.conv = conv
+	st.mu.Unlock()
+	go s.drainSession(sessionID, st)
 	s.cfg.Model = modelName // future sessions follow the switch
 	return map[string]any{"model": modelName}, nil
 }
@@ -494,6 +627,57 @@ func (s *Server) requestApproval(ctx context.Context, sessionID string, rc event
 	}
 }
 
+// ---------------------------------------------------------------------------
+// MCP elicitation (server -> client request)
+// ---------------------------------------------------------------------------
+
+// elicitFor wires an MCP elicitation handler that roundtrips to the TUI:
+// the server sends an "elicitation/request" (message + optional form schema)
+// and the client answers with an action (accept/decline/cancel) and, on
+// accept, the submitted form content. The wait is bounded by the session
+// lifetime — closing the session cancels outstanding elicitations.
+func (s *Server) elicitFor(st *sessionState, sessionID string) func(mcp.ElicitRequest) (mcp.ElicitResponse, error) {
+	return func(req mcp.ElicitRequest) (mcp.ElicitResponse, error) {
+		id := fmt.Sprintf("el-%d", s.seq.Add(1))
+		ch := make(chan wireMessage, 1)
+		s.pendingMu.Lock()
+		s.pending[id] = ch
+		s.pendingMu.Unlock()
+		defer func() {
+			s.pendingMu.Lock()
+			delete(s.pending, id)
+			s.pendingMu.Unlock()
+		}()
+
+		params := map[string]any{
+			"session_id": sessionID,
+			"message":    req.Message,
+		}
+		if len(req.RequestedSchema) > 0 {
+			params["requested_schema"] = req.RequestedSchema
+		}
+		s.wmu.Lock()
+		_ = s.enc.Encode(map[string]any{
+			"jsonrpc": "2.0", "id": id, "method": "elicitation/request", "params": params,
+		})
+		s.wmu.Unlock()
+
+		select {
+		case resp := <-ch:
+			var result struct {
+				Action  string         `json:"action"`
+				Content map[string]any `json:"content"`
+			}
+			if err := json.Unmarshal(resp.Result, &result); err != nil || result.Action == "" {
+				return mcp.ElicitResponse{Action: mcp.ElicitDecline}, nil
+			}
+			return mcp.ElicitResponse{Action: result.Action, Content: result.Content}, nil
+		case <-st.sctx.Done():
+			return mcp.ElicitResponse{Action: mcp.ElicitCancel}, nil
+		}
+	}
+}
+
 func (s *Server) resolvePending(msg wireMessage) {
 	id := string(msg.ID)
 	// ids come back as JSON strings: strip quotes
@@ -520,12 +704,6 @@ func (s *Server) notifyEvent(sessionID string, e event.Event) {
 	}
 	payload["session_id"] = sessionID
 	s.notify("agent/event", payload)
-}
-
-func (s *Server) notifyEventError(sessionID string, err error) {
-	s.notify("agent/event", map[string]any{
-		"type": "error", "session_id": sessionID, "message": err.Error(),
-	})
 }
 
 func (s *Server) notify(method string, params any) {

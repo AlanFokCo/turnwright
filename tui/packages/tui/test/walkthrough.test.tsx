@@ -18,7 +18,7 @@ class C extends EventEmitter {
   async sessionContinue() { return { sessionId: "a1b2c3d4-e5f6" }; }
   async sessionList() { return { sessions: [] }; }
   async sessionDelete() {} async sessionClose() {}
-  async turnStart() {} async turnCancel() {}
+  async turnStart() { return { started: true }; } async turnCancel() { return { cancelled: false }; }
   async modelSet() { return { model: "m" }; }
   async modelList() { return { models: [], provider: "x", current: "x" }; }
   async sessionSetPermission() {} async configGet() { return {} as any; }

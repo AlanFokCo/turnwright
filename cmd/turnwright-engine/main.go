@@ -42,8 +42,8 @@ func newRootCmd() *cobra.Command {
 		Use:           "turnwright-engine",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		Short: "turnwright engine — a coding agent assembled on agentscope-go",
-		Version: version,
+		Short:         "turnwright engine — a coding agent assembled on agentscope-go",
+		Version:       version,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.Load(f)
 			if err != nil {

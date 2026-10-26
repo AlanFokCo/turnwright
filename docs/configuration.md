@@ -33,9 +33,16 @@ context_size   = 0                # context-window override, tokens (ollama only
 # thinking, thinking_budget, effort, jail
 
 # Compression & output budget:
-compact_ratio     = 0.8   # trigger auto-compression at 80% of the window
-context_size      = 0     # 0 = auto-detect; set for proxy models with odd windows
-max_output_tokens = 32768
+compact_ratio         = 0.8   # trigger auto-compression at 80% of the window
+compact_precompress   = 0.0   # background pre-compression ratio (< compact_ratio; 0 = off)
+context_size          = 0     # 0 = auto-detect; set for proxy models with odd windows
+max_output_tokens     = 32768
+
+# web_search backend (unset = the web_search/WebFetch tools are not registered).
+# Any JSON search API works: GET <url>?q=<query>&format=json with optional
+# bearer key, returning {"results":[{title,url,content}]}. SearXNG-style.
+# search_url     = "http://localhost:8888/search"
+# search_api_key = ""
 
 [brand]
 name    = "turnwright"
@@ -66,6 +73,9 @@ theme   = "turnwright-dark"
 | `effort` | string | provider default | *Reserved, not yet wired* |
 | `jail` | bool | `false` | *Reserved, not yet wired* |
 | `compact_ratio` | float | `0.8` (upstream) | Auto-compression trigger as a fraction of the context window (clamped ≤ 0.9) |
+| `compact_precompress` | float | `0` (off) | Background pre-compression ratio — must be < `compact_ratio` (0.5–0.6 recommended): crossing the lower line starts generating the summary in the background, so the hard trigger applies it without a blocking model call. Unavailable with block-level compaction |
+| `search_url` | string | — | web_search backend base URL (JSON API; see comment above). Env `TURNWRIGHT_SEARCH_URL`. Unset = the `web_search`/`WebFetch` tools are not registered |
+| `search_api_key` | string | — | Optional bearer key for the search backend. Env `TURNWRIGHT_SEARCH_API_KEY`. Credentials never leave the turnwright process |
 
 <!-- src: internal/config/config.go Load (defaults) / mergeTOMLIntoFlags -->
 

@@ -14,21 +14,24 @@ import (
 // optional; missing keys fall through to env then defaults. Field names use
 // snake_case per TOML convention.
 type TOMLFile struct {
-	Provider       string  `toml:"provider"`
-	Model          string  `toml:"model"`
-	BaseURL        string  `toml:"base_url"`
-	APIKey         string  `toml:"api_key"`
-	Permission     string  `toml:"permission"`
-	MaxIters       int     `toml:"max_iters"`
-	Thinking       bool    `toml:"thinking"`
-	ThinkingBudget int     `toml:"thinking_budget"`
-	Effort         string  `toml:"effort"`
-	Jail           bool    `toml:"jail"`
-	PromptCaching  bool    `toml:"prompt_caching"`
-	CompactRatio    float64 `toml:"compact_ratio"`
-	ContextSize     int     `toml:"context_size"`
-	MaxOutputTokens int     `toml:"max_output_tokens"`
-	Brand          Brand   `toml:"brand"`
+	Provider           string  `toml:"provider"`
+	Model              string  `toml:"model"`
+	BaseURL            string  `toml:"base_url"`
+	APIKey             string  `toml:"api_key"`
+	Permission         string  `toml:"permission"`
+	MaxIters           int     `toml:"max_iters"`
+	Thinking           bool    `toml:"thinking"`
+	ThinkingBudget     int     `toml:"thinking_budget"`
+	Effort             string  `toml:"effort"`
+	Jail               bool    `toml:"jail"`
+	PromptCaching      bool    `toml:"prompt_caching"`
+	CompactRatio       float64 `toml:"compact_ratio"`
+	CompactPrecompress float64 `toml:"compact_precompress"` // background pre-compression ratio (< compact_ratio; 0 = off)
+	ContextSize        int     `toml:"context_size"`
+	MaxOutputTokens    int     `toml:"max_output_tokens"`
+	SearchURL          string  `toml:"search_url"`     // web_search backend: JSON API base URL (empty = tool not registered)
+	SearchAPIKey       string  `toml:"search_api_key"` // optional bearer key for the search backend
+	Brand              Brand   `toml:"brand"`
 	// Loaded reports whether the file was found and parsed (informational for
 	// /doctor). Not serialized.
 	Loaded bool `toml:"-"`
@@ -113,6 +116,15 @@ func mergeTOMLIntoFlags(f Flags, t TOMLFile) Flags {
 	}
 	if f.CompactRatio == 0 {
 		f.CompactRatio = t.CompactRatio
+	}
+	if f.CompactPrecompress == 0 {
+		f.CompactPrecompress = t.CompactPrecompress
+	}
+	if f.SearchURL == "" {
+		f.SearchURL = t.SearchURL
+	}
+	if f.SearchAPIKey == "" {
+		f.SearchAPIKey = t.SearchAPIKey
 	}
 	if f.ContextSize == 0 {
 		f.ContextSize = t.ContextSize

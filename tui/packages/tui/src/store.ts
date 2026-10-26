@@ -42,15 +42,33 @@ export interface NoticeEntry {
   level: "info" | "warn" | "error";
 }
 
-export type Entry = UserEntry | ReplyEntry | NoticeEntry;
+/** One user-initiated `!` shell command (codex `!` parity): runs outside the
+ *  model loop; output never enters model context. */
+export interface ShellEntry {
+  kind: "shell";
+  commandId: string;
+  command: string;
+  output: string;
+  exitCode?: number;
+  done: boolean;
+}
+
+export type Entry = UserEntry | ReplyEntry | NoticeEntry | ShellEntry;
+
+/** A model-maintained step plan (update_plan tool, codex parity). */
+export interface PlanState {
+  explanation?: string;
+  steps: { step: string; status: string }[];
+}
 
 export interface ChatState {
   entries: Entry[];
   activeReplyId: string | null;
   busy: boolean;
+  plan: PlanState | null;
 }
 
-export const initialChatState: ChatState = { entries: [], activeReplyId: null, busy: false };
+export const initialChatState: ChatState = { entries: [], activeReplyId: null, busy: false, plan: null };
 
 function lastReply(st: ChatState): ReplyEntry | undefined {
   const e = st.entries[st.entries.length - 1];
@@ -148,6 +166,69 @@ export function reduce(st: ChatState, ev: AgentEvent): ChatState {
       };
       return { ...st, entries: [...st.entries.slice(0, -1), next] };
     }
+    case "custom": {
+      // Structured custom events: user shell commands, plan updates and
+      // per-reply stats render as real UI; the rest become notices.
+      switch (ev.name) {
+        case "user_shell_start": {
+          const v = ev.value ?? {};
+          const entry: ShellEntry = {
+            kind: "shell",
+            commandId: String(v.command_id ?? ev.reply_id ?? ""),
+            command: String(v.command ?? ""),
+            output: "",
+            done: false,
+          };
+          return { ...st, entries: [...st.entries, entry] };
+        }
+        case "user_shell_output": {
+          const v = ev.value ?? {};
+          return { ...st, entries: st.entries.map((e) =>
+            e.kind === "shell" && e.commandId === String(v.command_id ?? ev.reply_id ?? "")
+              ? { ...e, output: e.output + String(v.data ?? "") }
+              : e) };
+        }
+        case "user_shell_end": {
+          const v = ev.value ?? {};
+          return { ...st, entries: st.entries.map((e): Entry => {
+            if (e.kind !== "shell" || e.commandId !== String(v.command_id ?? ev.reply_id ?? "")) return e;
+            const next: ShellEntry = { ...e, done: true };
+            if (typeof v.exit_code === "number") next.exitCode = v.exit_code;
+            return next;
+          }) };
+        }
+        case "plan_updated": {
+          const v = ev.value ?? {};
+          const plan: PlanState = {
+            steps: Array.isArray(v.plan)
+              ? (v.plan as { step: string; status: string }[])
+              : [],
+          };
+          if (typeof v.explanation === "string") {
+            plan.explanation = v.explanation;
+          }
+          return { ...st, plan };
+        }
+        case "turn_stats": {
+          const v = ev.value ?? {};
+          const r = lastReply(st);
+          if (!r) return st;
+          // Authoritative per-reply totals (includes compression usage that
+          // delta events miss) — replace, don't accumulate.
+          const next: ReplyEntry = {
+            ...r,
+            inTok: typeof v.input_tokens === "number" ? v.input_tokens : r.inTok,
+            outTok: typeof v.output_tokens === "number" ? v.output_tokens : r.outTok,
+          };
+          return { ...st, entries: [...st.entries.slice(0, -1), next] };
+        }
+        default: {
+          const n = noticeForCustom(ev.name, ev.value);
+          if (!n) return st;
+          return { ...st, entries: [...st.entries, n] };
+        }
+      }
+    }
     case "reply_end": {
       const r = lastReply(st);
       if (!r) return st;
@@ -169,6 +250,25 @@ export function reduce(st: ChatState, ev: AgentEvent): ChatState {
 
 export function pushUser(st: ChatState, text: string): ChatState {
   return { ...st, entries: [...st.entries, { kind: "user", text }] };
+}
+
+function noticeForCustom(name: string | undefined, value: Record<string, unknown> | undefined): NoticeEntry | null {
+  switch (name) {
+    case "conversation_input_injected": {
+      const inputs = Array.isArray(value?.inputs) ? (value.inputs as string[]).length : 1;
+      return { kind: "notice", text: `↪ input steered into the running turn (${inputs} message${inputs === 1 ? "" : "s"})`, level: "info" };
+    }
+    case "conversation_turn_interrupted":
+      return { kind: "notice", text: "turn interrupted — pending input drives the next turn", level: "warn" };
+    case "compacted":
+      return { kind: "notice", text: "context compacted", level: "info" };
+    case "context_overflow_recovery":
+      return { kind: "notice", text: "context overflow recovered: tool results truncated, summary forced", level: "warn" };
+    case "conversation_turn_error":
+      return { kind: "notice", text: `turn failed to start: ${String(value?.error ?? "unknown error")}`, level: "error" };
+    default:
+      return null;
+  }
 }
 
 export function pushNotice(st: ChatState, text: string, level: NoticeEntry["level"] = "info"): ChatState {

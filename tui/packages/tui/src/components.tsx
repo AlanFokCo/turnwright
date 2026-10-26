@@ -5,7 +5,7 @@ import React, { useMemo } from "react";
 import { useRenderer } from "@opentui/react";
 import type { Brand, ToolCallBlock } from "@turnwright/core";
 import type { Theme } from "./theme.js";
-import type { Entry, ReplyEntry, ToolEntry } from "./store.js";
+import type { Entry, PlanState, ReplyEntry, ShellEntry, ToolEntry } from "./store.js";
 import { makeMarkdownStyle } from "./markdown.js";
 
 export function WelcomeHero({ brand, theme }: { brand: Brand; theme: Theme }) {
@@ -42,8 +42,79 @@ export const MessageView = React.memo(function MessageView({ entry, theme }: { e
       </box>
     );
   }
+  if (entry.kind === "shell") {
+    return <ShellView entry={entry} theme={theme} />;
+  }
   return <ReplyView reply={entry} theme={theme} />;
 });
+
+/** A user-initiated `!` command: ran outside the model loop, output shown as-is. */
+function ShellView({ entry, theme }: { entry: ShellEntry; theme: Theme }) {
+  const fg = entry.done && entry.exitCode === 0 ? theme.colors.success
+    : entry.done ? theme.colors.danger : theme.colors.accent;
+  const icon = entry.done ? (entry.exitCode === 0 ? theme.icons.success : theme.icons.error) : theme.icons.running;
+  const lines = entry.output.split("\n");
+  const preview = lines.slice(0, 12).join("\n");
+  return (
+    <box flexDirection="column" marginTop={1} paddingX={1}>
+      <text>
+        <span fg={fg}>{icon} </span>
+        <span fg={theme.colors.muted}>$ </span>
+        <span fg={theme.colors.text}><strong>{entry.command}</strong></span>
+        {entry.done && <span fg={fg}>  exit {entry.exitCode}</span>}
+      </text>
+      {preview !== "" && (
+        <box marginLeft={2}>
+          <text fg={theme.colors.text}>{preview}{lines.length > 12 ? "\n…" : ""}</text>
+        </box>
+      )}
+    </box>
+  );
+}
+
+/** The model-maintained step plan (update_plan), shown while set (codex parity). */
+export function PlanPanel({ plan, theme }: { plan: PlanState; theme: Theme }) {
+  const iconFor = (status: string) =>
+    status === "completed" ? theme.icons.success
+    : status === "in_progress" ? theme.icons.running
+    : status === "cancelled" ? theme.icons.error
+    : "○";
+  const fgFor = (status: string) =>
+    status === "completed" ? theme.colors.muted
+    : status === "in_progress" ? theme.colors.accent
+    : status === "cancelled" ? theme.colors.danger
+    : theme.colors.muted;
+  return (
+    <box flexDirection="column" marginX={1} paddingX={1} flexShrink={0} border borderColor={theme.colors.border}>
+      <text fg={theme.colors.muted}>plan</text>
+      {plan.explanation !== undefined && plan.explanation !== "" && (
+        <text fg={theme.colors.muted}>{plan.explanation}</text>
+      )}
+      {plan.steps.map((s, i) => (
+        <text key={i}>
+          <span fg={fgFor(s.status)}>{iconFor(s.status)} </span>
+          <span fg={fgFor(s.status)}>{s.step}</span>
+        </text>
+      ))}
+    </box>
+  );
+}
+
+/** MCP elicitation: a server asks the user for input mid tool call. */
+export function ElicitDialog({ message, theme }: { message: string; theme: Theme }) {
+  return (
+    <box
+      border borderColor={theme.colors.warn}
+      paddingX={2} paddingY={1} marginX={1} marginTop={1}
+      backgroundColor={theme.colors.surface} flexShrink={0}
+      flexDirection="column"
+    >
+      <text fg={theme.colors.warn}><strong>Server requests input</strong></text>
+      <text fg={theme.colors.text}>{message}</text>
+      <text fg={theme.colors.muted}>type an answer and [y] submit · [n] decline</text>
+    </box>
+  );
+}
 
 function Markdown({ text, theme }: { text: string; theme: Theme }) {
   const renderer = useRenderer();

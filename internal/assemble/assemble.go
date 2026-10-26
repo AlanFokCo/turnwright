@@ -21,6 +21,7 @@ import (
 	asconfig "github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/config"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/logging"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/mcp"
+	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/mcp/streamablehttp"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/model"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/permission"
 	"github.com/agentscope-ai/agentscope-go/v2/pkg/agentscope/skill"
@@ -49,7 +50,11 @@ type Handle struct {
 	Saver     *transcript.Saver
 	// PCtx is the live permission context shared with the agent; mutating its
 	// Mode changes permission behavior for subsequent tool calls.
-	PCtx    *permission.Context
+	PCtx *permission.Context
+	// Elicit routes MCP elicitation requests (servers asking the user for
+	// input mid tool call) to the host UI. Set by the LCP server; nil (or
+	// print mode) declines — see loadMCP.
+	Elicit  func(mcp.ElicitRequest) (mcp.ElicitResponse, error)
 	closers []func() error
 }
 
@@ -96,11 +101,23 @@ func ChatModel(cfg *config.Config) (model.ChatModel, error) {
 // Agent assembles a UnifiedAgent for one session. sessionID == "" starts a
 // fresh session; otherwise the state is restored from the saver.
 func Agent(ctx context.Context, cfg *config.Config, cwd, sessionID string) (*Handle, error) {
-	cm, err := ChatModel(cfg)
+	cm, err := ChatModelDumped(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return AgentWithModel(ctx, cfg, cwd, sessionID, cm)
+}
+
+// ChatModelDumped is ChatModel wrapped with the tool_result wire-validity
+// splitter (see msgsplit.go) and, when TURNWRIGHT_WIRE_DUMP is set, wire
+// capture (see wiredump.go). The splitter sits OUTERmost so the dump records
+// exactly what reaches the provider.
+func ChatModelDumped(cfg *config.Config) (model.ChatModel, error) {
+	cm, err := ChatModel(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return maybeSplitToolResults(maybeWireDump(cm)), nil
 }
 
 // AgentWithModel is Agent with an explicit chat model — the seam used by
@@ -133,13 +150,31 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 	tk := tool.NewEnhancedToolkit()
 	h := &Handle{PCtx: pctx}
 
+	// Persistent shell sessions (codex unified_exec parity): one long-lived
+	// POSIX shell whose cwd/env survive across tool calls. NewShellManager
+	// fails on non-POSIX hosts; the agent keeps the one-shot Bash tool then.
+	if sm, err := tool.NewShellManager(tool.WithShellManagerCwd(cwd)); err != nil {
+		fmt.Fprintf(os.Stderr, "turnwright: persistent shell sessions unavailable: %v\n", err)
+	} else {
+		tk.AddGroup("shell", tool.ShellTool(sm), tool.ShellStdinTool(sm))
+		h.closers = append(h.closers, sm.Close)
+	}
+
+	// Web tools (codex parity): web_search through a host-injected backend
+	// (search_url in config / TURNWRIGHT_SEARCH_URL; unset = not registered),
+	// plus the read-only WebFetch. Provider credentials never leave this
+	// process — agentscope only receives the SearchFunc.
+	if sf := searchFunc(cfg); sf != nil {
+		tk.AddGroup("web", tool.NewWebSearchTool(sf), tool.WebFetchTool())
+	}
+
 	skills := loadSkills(cwd)
 	if len(skills) > 0 {
 		tk.AddGroup("skills", skill.NewSkillViewerTool(skills))
 	}
 
-	mcpTKs, closers := loadMCP(ctx, cwd)
-	h.closers = closers
+	mcpTKs, closers := loadMCP(ctx, cwd, h)
+	h.closers = append(h.closers, closers...)
 	for _, mtk := range mcpTKs {
 		tk = mcp.MergeToolkits(tk, mtk)
 	}
@@ -152,15 +187,31 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 		// Proxy streams occasionally deliver garbled/truncated tool-call
 		// chunks ("incomplete tool arguments"); one retry usually yields a
 		// clean call instead of aborting the whole turn in front of the user.
-		agent.WithModelConfig(agent.ModelConfig{MaxRetries: 3, RetryDelay: 2 * time.Second}),
+		// StreamIdleTimeout: a silent stream is a transport failure — the
+		// proxy sometimes wedges mid-reply; 2 minutes catches that faster
+		// than the 5-minute upstream default.
+		agent.WithModelConfig(agent.ModelConfig{
+			MaxRetries:        3,
+			RetryDelay:        2 * time.Second,
+			StreamIdleTimeout: 2 * time.Minute,
+		}),
 		// Without ContextConfig the upstream auto-compression never arms
 		// (compressContextWithRatio no-ops on a nil config) — sessions would
 		// grow unbounded and get tail-truncated by provider proxies.
+		// PrecompressRatio (when configured below TriggerRatio) generates the
+		// summary in the background so the hard trigger applies it without a
+		// blocking model call.
 		agent.WithContextConfig(&agent.ContextConfig{
-			TriggerRatio: cfg.CompactRatio, // 0 = upstream default 0.8
-			ContextSize:  cfg.ContextSize,  // 0 = auto-detect (model card / default)
+			TriggerRatio:     cfg.CompactRatio,       // 0 = upstream default 0.8
+			PrecompressRatio: cfg.CompactPrecompress, // 0 = off; must be < TriggerRatio
+			ContextSize:      cfg.ContextSize,        // 0 = auto-detect (model card / default)
 		}),
 		agent.WithAgentDrivenCompression(),
+		// codex parity: a visible step plan the model maintains itself
+		// (checkpointed, survives compression) and a budget probe the model
+		// can consult before starting expensive subtasks.
+		agent.WithPlanTool(),
+		agent.WithContextRemainingTool(),
 	}
 	if len(skills) > 0 {
 		opts = append(opts, agent.WithSkills(skills))
@@ -181,6 +232,18 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 	}
 
 	h.Agent = agent.NewUnifiedAgent("turnwright", SystemPrompt(cwd, pc), cm, opts...)
+
+	// Durable learned rules: "always allow" answers persist to the project's
+	// .agentscope/settings.local.json and are read back on the next session.
+	// Without a store the rule still applies in memory for this session only.
+	if h.Agent.PermissionEngine() != nil {
+		if rs, err := asconfig.NewSettingsRuleStore(cwd); err == nil {
+			h.Agent.PermissionEngine().SetRuleStore(rs)
+		} else {
+			fmt.Fprintf(os.Stderr, "turnwright: durable rules unavailable: %v\n", err)
+		}
+	}
+
 	h.Saver = saver
 	return h, nil
 }
@@ -218,6 +281,11 @@ func SystemPrompt(cwd string, pc *asconfig.ProjectConfig) string {
   whole marked region with the edit tool (never commit with markers left),
   git add the file, then finish the merge commit. Afterwards run git
   diff --check and re-read each resolved file before declaring done.
+- The Shell tool keeps one persistent session: its working directory and
+  exported variables survive across calls. cd once at the start, then run
+  commands without repeating the path; prefer Shell for command sequences
+  and Bash for one-off commands. Long-running commands return a running
+  status: poll them with ShellStdin instead of waiting blindly.
 - When stuck, change approach: a different tool, a different command, or
   reading the relevant file again.
 `)
@@ -285,13 +353,21 @@ type mcpServer struct {
 
 // loadMCP connects every server declared in ~/.turnwright/mcp.json and the
 // project's .mcp.json (project wins on name clash). Failures are logged to
-// stderr and skipped — one bad server must not block the session.
-func loadMCP(ctx context.Context, cwd string) ([]*tool.Toolkit, []func() error) {
+// stderr and skipped — one bad server must not block the session. Elicitation
+// requests route through h.Elicit (declined when unset, e.g. print mode).
+func loadMCP(ctx context.Context, cwd string, h *Handle) ([]*tool.Toolkit, []func() error) {
 	servers := map[string]mcpServer{}
 	if home, err := os.UserHomeDir(); err == nil {
 		mergeMCPFile(servers, filepath.Join(home, ".turnwright", "mcp.json"))
 	}
 	mergeMCPFile(servers, filepath.Join(cwd, ".mcp.json"))
+
+	elicit := func(ctx context.Context, req mcp.ElicitRequest) (mcp.ElicitResponse, error) {
+		if h == nil || h.Elicit == nil {
+			return mcp.ElicitResponse{Action: mcp.ElicitDecline}, nil
+		}
+		return h.Elicit(req)
+	}
 
 	var toolkits []*tool.Toolkit
 	var closers []func() error
@@ -308,16 +384,28 @@ func loadMCP(ctx context.Context, cwd string) ([]*tool.Toolkit, []func() error) 
 			err error
 		)
 		if srv.Type == "http" {
-			var c *mcp.HttpClient
-			c, err = mcp.NewHttpClient(ctx, &mcp.HttpConfig{URL: srv.URL})
-			if err == nil {
+			// Streamable HTTP first (elicitation-capable, spec 2025-03-26+);
+			// fall back to the bare-POST client for legacy servers.
+			c, cerr := streamablehttp.NewClient(ctx, &streamablehttp.Config{
+				BaseURL:            srv.URL,
+				ElicitationHandler: elicit,
+			})
+			if cerr == nil {
 				tk, err = mcp.NewMCPToolkit(ctx, c)
 				closers = append(closers, c.Close)
+			} else {
+				var hc *mcp.HttpClient
+				hc, err = mcp.NewHttpClient(ctx, &mcp.HttpConfig{URL: srv.URL})
+				if err == nil {
+					tk, err = mcp.NewMCPToolkit(ctx, hc)
+					closers = append(closers, hc.Close)
+				}
 			}
 		} else {
 			var c *mcp.StdioClient
 			c, err = mcp.NewStdioClient(ctx, &mcp.StdioConfig{
 				Command: srv.Command, Args: srv.Args, Env: env, WorkDir: cwd, Stateful: true,
+				ElicitationHandler: elicit,
 			})
 			if err == nil {
 				tk, err = mcp.NewMCPToolkit(ctx, c)

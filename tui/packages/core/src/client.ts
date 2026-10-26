@@ -9,8 +9,13 @@ import type {
   ApprovalRequest,
   ConfigSnapshot,
   ConfirmResult,
+  ElicitationRequest,
+  ElicitResult,
   InitializeResult,
   SessionInfo,
+  SessionCompactResult,
+  TurnStartResult,
+  UserShellResult,
 } from "./protocol.js";
 import { PROTOCOL_VERSION } from "./protocol.js";
 
@@ -28,6 +33,8 @@ interface PendingCall {
 
 export type ApprovalHandler = (req: ApprovalRequest) => Promise<{ confirmResults: ConfirmResult[] }>;
 
+export type ElicitationHandler = (req: ElicitationRequest) => Promise<ElicitResult>;
+
 /** TuiClient is the surface the TUI consumes. EngineClient implements it;
  *  tests inject fakes. */
 export interface TuiClient {
@@ -41,11 +48,14 @@ export interface TuiClient {
   sessionList(): Promise<{ sessions: SessionInfo[] }>;
   sessionDelete(sessionId: string): Promise<void>;
   sessionClose(sessionId: string): Promise<void>;
-  turnStart(sessionId: string, input: string): Promise<void>;
+  turnStart(sessionId: string, input: string): Promise<TurnStartResult>;
   turnCancel(sessionId: string): Promise<void>;
   modelSet(sessionId: string, model: string): Promise<{ model: string }>;
   modelList(): Promise<ModelListResult>;
   sessionSetPermission(sessionId: string, mode: string): Promise<void>;
+  sessionCompact(sessionId: string): Promise<SessionCompactResult>;
+  sessionUserShell(sessionId: string, command: string, timeoutMs?: number): Promise<UserShellResult>;
+  onElicitation(h: ElicitationHandler): void;
   configGet(): Promise<ConfigSnapshot>;
   dispose(): void;
 }
@@ -55,6 +65,7 @@ export class EngineClient extends EventEmitter implements TuiClient {
   private seq = 0;
   private pending = new Map<number | string, PendingCall>();
   private approvalHandler: ApprovalHandler | null = null;
+  private elicitationHandler: ElicitationHandler | null = null;
   private rl: readline.Interface;
   readonly info: Promise<InitializeResult>;
 
@@ -93,6 +104,10 @@ export class EngineClient extends EventEmitter implements TuiClient {
     this.approvalHandler = h;
   }
 
+  onElicitation(h: ElicitationHandler): void {
+    this.elicitationHandler = h;
+  }
+
   private onLine(line: string): void {
     let msg: any;
     try {
@@ -106,6 +121,10 @@ export class EngineClient extends EventEmitter implements TuiClient {
     }
     if (msg.method === "approval/request" && msg.id !== undefined) {
       void this.handleApproval(msg.id, msg.params as ApprovalRequest);
+      return;
+    }
+    if (msg.method === "elicitation/request" && msg.id !== undefined) {
+      void this.handleElicitation(msg.id, msg.params as ElicitationRequest);
       return;
     }
     if (msg.id !== undefined && (msg.result !== undefined || msg.error !== undefined)) {
@@ -127,6 +146,13 @@ export class EngineClient extends EventEmitter implements TuiClient {
         confirmResults: req.tool_calls.map((tc) => ({ confirmed: false, tool_call: tc })),
       };
     }
+    this.send({ jsonrpc: "2.0", id, result });
+  }
+
+  private async handleElicitation(id: string, req: ElicitationRequest): Promise<void> {
+    const result: ElicitResult = this.elicitationHandler
+      ? await this.elicitationHandler(req)
+      : { action: "decline" };
     this.send({ jsonrpc: "2.0", id, result });
   }
 
@@ -160,7 +186,7 @@ export class EngineClient extends EventEmitter implements TuiClient {
   sessionClose(sessionId: string): Promise<void> {
     return this.call("session/close", { sessionId });
   }
-  turnStart(sessionId: string, input: string): Promise<void> {
+  turnStart(sessionId: string, input: string): Promise<TurnStartResult> {
     return this.call("turn/start", { sessionId, input });
   }
   turnCancel(sessionId: string): Promise<void> {
@@ -177,6 +203,12 @@ export class EngineClient extends EventEmitter implements TuiClient {
   }
   sessionSetPermission(sessionId: string, mode: string): Promise<void> {
     return this.call("session/set_permission", { sessionId, mode });
+  }
+  sessionCompact(sessionId: string): Promise<SessionCompactResult> {
+    return this.call("session/compact", { sessionId });
+  }
+  sessionUserShell(sessionId: string, command: string, timeoutMs = 0): Promise<UserShellResult> {
+    return this.call("session/user_shell", { sessionId, command, timeoutMs });
   }
 
   dispose(): void {

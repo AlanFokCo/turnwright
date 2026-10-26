@@ -15,7 +15,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { name: "/permission", description: "set permission mode", usage: "/permission <mode>" },
   { name: "/status", description: "show session status" },
   { name: "/vim", description: "toggle vim keybindings" },
-  { name: "/compact", description: "compact context (pending upstream API)" },
+  { name: "/compact", description: "compact the context now" },
   { name: "/clear", description: "clear the conversation view" },
   { name: "/quit", description: "exit" },
 ];
