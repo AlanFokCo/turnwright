@@ -29,9 +29,26 @@ func TestSystemPromptTeachesPersistentShell(t *testing.T) {
 		"persistent session",
 		"cd once",
 		"ShellStdin",
+		"polling an idle session is an error",
 	} {
 		if !strings.Contains(p, want) {
 			t.Fatalf("SystemPrompt missing shell guidance %q", want)
+		}
+	}
+}
+
+// The prompt must curb the observed failure modes of real sessions:
+// runaway reconnaissance before acting, unrequested side artifacts, and
+// silent multi-minute tool runs.
+func TestSystemPromptCurbsOverExploration(t *testing.T) {
+	p := SystemPrompt("/tmp", nil)
+	for _, want := range []string{
+		"Act on what was asked, immediately",
+		"backup branches",
+		"Talk while working",
+	} {
+		if !strings.Contains(p, want) {
+			t.Fatalf("SystemPrompt missing discipline %q", want)
 		}
 	}
 }

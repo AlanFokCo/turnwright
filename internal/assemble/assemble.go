@@ -265,6 +265,13 @@ func SystemPrompt(cwd string, pc *asconfig.ProjectConfig) string {
 - Solve the root cause, not surface symptoms. Read code before editing it.
 - Prefer the apply_patch / edit tools for file changes; use bash for running,
   building, and searching.
+- Act on what was asked, immediately: run the shortest command sequence that
+  accomplishes the request. Investigate only the facts the request genuinely
+  needs; never create backup branches, copies or analysis artifacts the user
+  did not ask for.
+- Talk while working: before each batch of tool calls send the user one short
+  line on what you are about to do and why; when finished, say what changed
+  and what to check. Long silent tool runs read as a stuck session.
 - Keep changes minimal and consistent with the codebase's existing style.
 - Verify with the project's own build/test commands before declaring done.
 - Be concise in replies: what changed, why, and what to check next.
@@ -285,7 +292,9 @@ func SystemPrompt(cwd string, pc *asconfig.ProjectConfig) string {
   exported variables survive across calls. cd once at the start, then run
   commands without repeating the path; prefer Shell for command sequences
   and Bash for one-off commands. Long-running commands return a running
-  status: poll them with ShellStdin instead of waiting blindly.
+  status: poll THOSE with ShellStdin — polling an idle session is an error,
+  not progress. Keep each command short and targeted instead of chaining
+  many echo-headed sections into one call.
 - When stuck, change approach: a different tool, a different command, or
   reading the relevant file again.
 `)

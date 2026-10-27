@@ -179,8 +179,16 @@ function ToolCard({ tool, theme }: { tool: ToolEntry; theme: Theme }) {
     : tool.state === "error" ? theme.colors.danger
     : tool.state === "denied" ? theme.colors.warn
     : theme.colors.accent;
-  const preview = tool.output.split("\n").slice(0, 8).join("\n");
-  const truncated = tool.output.split("\n").length > 8;
+  const lines = tool.output.split("\n");
+  const preview = lines.slice(0, 8).join("\n");
+  const truncated = lines.length > 8;
+  // A successful command should still SHOW something: a wall of bare command
+  // cards reads as a stuck session. Three muted lines of its output give the
+  // user feedback without flooding the transcript.
+  const successPreview = lines.slice(0, 3)
+    .map((l) => (l.length > 100 ? l.slice(0, 100) + "…" : l))
+    .filter((l) => l.trim() !== "")
+    .join("\n");
   return (
     <box flexDirection="column" marginTop={1}>
       <text>
@@ -196,6 +204,14 @@ function ToolCard({ tool, theme }: { tool: ToolEntry; theme: Theme }) {
       {tool.state === "success" && looksLikeDiff(tool.output) && (
         <box marginLeft={2}>
           <diff diff={preview} view="unified" />
+        </box>
+      )}
+      {tool.state === "success" && !looksLikeDiff(tool.output) && successPreview !== "" && (
+        <box marginLeft={2}>
+          <text fg={theme.colors.muted}>
+            {successPreview}
+            {lines.length > 3 ? "\n…" : ""}
+          </text>
         </box>
       )}
     </box>
