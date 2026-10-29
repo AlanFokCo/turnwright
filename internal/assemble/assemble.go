@@ -187,13 +187,16 @@ func AgentWithModel(ctx context.Context, cfg *config.Config, cwd, sessionID stri
 		// Proxy streams occasionally deliver garbled/truncated tool-call
 		// chunks ("incomplete tool arguments"); one retry usually yields a
 		// clean call instead of aborting the whole turn in front of the user.
-		// StreamIdleTimeout: a silent stream is a transport failure — the
-		// proxy sometimes wedges mid-reply; 2 minutes catches that faster
-		// than the 5-minute upstream default.
+		// StreamIdleTimeout is DISABLED (negative): the guard measures silence
+		// on the chunk channel, but a healthy stream is silent there while a
+		// long tool-call input accumulates (input_json_delta events never
+		// surface as chunks), so writing a large file reliably tripped
+		// "model stream idle" on real sessions. A wedged transport shows up
+		// as a connection error or is interruptible with ESC.
 		agent.WithModelConfig(agent.ModelConfig{
 			MaxRetries:        3,
 			RetryDelay:        2 * time.Second,
-			StreamIdleTimeout: 2 * time.Minute,
+			StreamIdleTimeout: -1,
 		}),
 		// Without ContextConfig the upstream auto-compression never arms
 		// (compressContextWithRatio no-ops on a nil config) — sessions would
